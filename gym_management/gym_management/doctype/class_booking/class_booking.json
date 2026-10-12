@@ -1,0 +1,75 @@
+{
+  "doctype": "DocType",
+  "name": "Class Booking",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:BOOK-{####}",
+  "field_order": [
+    "member",
+    "class_session",
+    "booking_date",
+    "status",
+    "waitlist_position"
+  ],
+  "fields": [
+    {
+      "label": "Member",
+      "fieldtype": "Link",
+      "fieldname": "member",
+      "options": "Gym Member",
+      "reqd": 1
+    },
+    {
+      "label": "Class Session",
+      "fieldtype": "Link",
+      "fieldname": "class_session",
+      "options": "Class Session",
+      "reqd": 1
+    },
+    {
+      "label": "Booking Date",
+      "fieldtype": "Datetime",
+      "fieldname": "booking_date",
+      "default": "Now"
+    },
+    {
+      "label": "Status",
+      "fieldtype": "Select",
+      "fieldname": "status",
+      "options": "Booked\nWaitlisted\nCancelled\nAttended\nNo Show",
+      "default": "Booked"
+    },
+    {
+      "label": "Waitlist Position",
+      "fieldtype": "Int",
+      "fieldname": "waitlist_position",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
+  ],
+  "allow_rename": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

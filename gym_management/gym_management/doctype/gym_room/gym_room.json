@@ -1,0 +1,65 @@
+{
+  "doctype": "DocType",
+  "name": "Gym Room",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:ROOM-{####}",
+  "field_order": [
+    "room_name",
+    "capacity",
+    "location",
+    "status"
+  ],
+  "fields": [
+    {
+      "label": "Room Name",
+      "fieldtype": "Data",
+      "fieldname": "room_name",
+      "reqd": 1
+    },
+    {
+      "label": "Capacity",
+      "fieldtype": "Int",
+      "fieldname": "capacity",
+      "reqd": 1
+    },
+    {
+      "label": "Location",
+      "fieldtype": "Data",
+      "fieldname": "location"
+    },
+    {
+      "label": "Status",
+      "fieldtype": "Select",
+      "fieldname": "status",
+      "options": "Available\nMaintenance\nInactive",
+      "default": "Available"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
+  ],
+  "allow_rename": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

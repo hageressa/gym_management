@@ -1,0 +1,80 @@
+{
+  "doctype": "DocType",
+  "name": "Gym Check In",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:CHECKIN-{####}",
+  "field_order": [
+    "member",
+    "gym_membership",
+    "check_in_time",
+    "check_out_time",
+    "class_booking",
+    "notes"
+  ],
+  "fields": [
+    {
+      "label": "Member",
+      "fieldtype": "Link",
+      "fieldname": "member",
+      "options": "Gym Member",
+      "reqd": 1
+    },
+    {
+      "label": "Gym Membership",
+      "fieldtype": "Link",
+      "fieldname": "gym_membership",
+      "options": "Gym Membership",
+      "reqd": 1
+    },
+    {
+      "label": "Check In Time",
+      "fieldtype": "Datetime",
+      "fieldname": "check_in_time",
+      "reqd": 1,
+      "default": "Now"
+    },
+    {
+      "label": "Check Out Time",
+      "fieldtype": "Datetime",
+      "fieldname": "check_out_time"
+    },
+    {
+      "label": "Class Booking",
+      "fieldtype": "Link",
+      "fieldname": "class_booking",
+      "options": "Class Booking"
+    },
+    {
+      "label": "Notes",
+      "fieldtype": "Small Text",
+      "fieldname": "notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
+  ],
+  "allow_rename": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

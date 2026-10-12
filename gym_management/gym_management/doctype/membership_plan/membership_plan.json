@@ -38,15 +38,13 @@
   },
   {
    "fieldname": "duration_value",
-   "fieldtype": "Int",
-   "label": "Duration Value",
-   "reqd": 1
+  "fieldtype": "Int",
+  "label": "Duration Value"
   },
   {
    "fieldname": "price",
-   "fieldtype": "Currency",
-   "label": "Price",
-   "reqd": 1
+  "fieldtype": "Currency",
+  "label": "Price"
   },
   {
    "fieldname": "classes_included",
@@ -59,10 +57,9 @@
    "label": "Max Freeze Days"
   },
   {
-   "default": "1",
    "fieldname": "is_active",
-   "fieldtype": "Check",
-   "label": "Is Active"
+  "fieldtype": "Check",
+  "label": "Is Active"
   }
  ],
  "grid_page_length": 50,

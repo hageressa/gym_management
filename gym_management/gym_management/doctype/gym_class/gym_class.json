@@ -1,0 +1,87 @@
+{
+  "doctype": "DocType",
+  "name": "Gym Class",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:CLASS-{####}",
+  "field_order": [
+    "class_name",
+    "description",
+    "trainer",
+    "room",
+    "capacity",
+    "duration_minutes",
+    "status"
+  ],
+  "fields": [
+    {
+      "label": "Class Name",
+      "fieldtype": "Data",
+      "fieldname": "class_name",
+      "reqd": 1
+    },
+    {
+      "label": "Description",
+      "fieldtype": "Small Text",
+      "fieldname": "description"
+    },
+    {
+      "label": "Trainer",
+      "fieldtype": "Link",
+      "fieldname": "trainer",
+      "options": "Gym Trainer",
+      "reqd": 1
+    },
+    {
+      "label": "Room",
+      "fieldtype": "Link",
+      "fieldname": "room",
+      "options": "Gym Room"
+    },
+    {
+      "label": "Capacity",
+      "fieldtype": "Int",
+      "fieldname": "capacity",
+      "reqd": 1
+    },
+    {
+      "label": "Duration (Minutes)",
+      "fieldtype": "Int",
+      "fieldname": "duration_minutes",
+      "default": "60"
+    },
+    {
+      "label": "Status",
+      "fieldtype": "Select",
+      "fieldname": "status",
+      "options": "Active\nInactive",
+      "default": "Active"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
+  ],
+  "allow_rename": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

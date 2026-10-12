@@ -1,0 +1,88 @@
+{
+  "doctype": "DocType",
+  "name": "Class Session",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:SESS-{####}",
+  "field_order": [
+    "gym_class",
+    "trainer",
+    "room",
+    "start_datetime",
+    "end_datetime",
+    "capacity",
+    "status"
+  ],
+  "fields": [
+    {
+      "label": "Gym Class",
+      "fieldtype": "Link",
+      "fieldname": "gym_class",
+      "options": "Gym Class",
+      "reqd": 1
+    },
+    {
+      "label": "Trainer",
+      "fieldtype": "Link",
+      "fieldname": "trainer",
+      "options": "Gym Trainer"
+    },
+    {
+      "label": "Room",
+      "fieldtype": "Link",
+      "fieldname": "room",
+      "options": "Gym Room"
+    },
+    {
+      "label": "Start Datetime",
+      "fieldtype": "Datetime",
+      "fieldname": "start_datetime",
+      "reqd": 1
+    },
+    {
+      "label": "End Datetime",
+      "fieldtype": "Datetime",
+      "fieldname": "end_datetime",
+      "reqd": 1
+    },
+    {
+      "label": "Capacity",
+      "fieldtype": "Int",
+      "fieldname": "capacity",
+      "reqd": 1
+    },
+    {
+      "label": "Status",
+      "fieldtype": "Select",
+      "fieldname": "status",
+      "options": "Scheduled\nCompleted\nCancelled",
+      "default": "Scheduled"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
+  ],
+  "allow_rename": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

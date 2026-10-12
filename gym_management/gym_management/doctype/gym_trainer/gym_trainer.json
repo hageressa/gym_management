@@ -1,0 +1,78 @@
+{
+  "doctype": "DocType",
+  "name": "Gym Trainer",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:TRN-{####}",
+  "field_order": [
+    "trainer_name",
+    "employee",
+    "email",
+    "phone",
+    "specialization",
+    "status"
+  ],
+  "fields": [
+    {
+      "label": "Trainer Name",
+      "fieldtype": "Data",
+      "fieldname": "trainer_name",
+      "reqd": 1
+    },
+    {
+      "label": "Employee",
+      "fieldtype": "Link",
+      "fieldname": "employee",
+      "options": "Employee"
+    },
+    {
+      "label": "Email",
+      "fieldtype": "Data",
+      "fieldname": "email",
+      "options": "Email"
+    },
+    {
+      "label": "Phone",
+      "fieldtype": "Data",
+      "fieldname": "phone"
+    },
+    {
+      "label": "Specialization",
+      "fieldtype": "Data",
+      "fieldname": "specialization"
+    },
+    {
+      "label": "Status",
+      "fieldtype": "Select",
+      "fieldname": "status",
+      "options": "Active\nInactive",
+      "default": "Active"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
+  ],
+  "allow_rename": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}
