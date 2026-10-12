@@ -1,0 +1,41 @@
+[
+ {
+  "desk_access": 1,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Role",
+  "home_page": null,
+  "is_custom": 0,
+  "modified": "2026-10-12 00:11:01.398195",
+  "name": "Gym Manager",
+  "restrict_to_domain": null,
+  "role_name": "Gym Manager",
+  "two_factor_auth": 0
+ },
+ {
+  "desk_access": 1,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Role",
+  "home_page": null,
+  "is_custom": 0,
+  "modified": "2026-10-12 00:12:11.982789",
+  "name": "Front Desk",
+  "restrict_to_domain": null,
+  "role_name": "Front Desk",
+  "two_factor_auth": 0
+ },
+ {
+  "desk_access": 1,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Role",
+  "home_page": null,
+  "is_custom": 0,
+  "modified": "2026-10-12 00:15:38.990167",
+  "name": "Trainer",
+  "restrict_to_domain": null,
+  "role_name": "Trainer",
+  "two_factor_auth": 0
+ }
+]
