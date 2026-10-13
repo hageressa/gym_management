@@ -258,3 +258,9 @@ fixtures = [
         "filters": [["name", "in", ["Gym Manager", "Front Desk", "Trainer"]]],
     },
 ]
+
+scheduler_events = {
+    "daily": [
+        "gym_management.tasks.update_expired_memberships"
+    ]
+}
