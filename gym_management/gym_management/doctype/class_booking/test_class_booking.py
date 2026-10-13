@@ -1,6 +1,6 @@
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from types import SimpleNamespace
 
 from gym_management.gym_management.doctype.class_booking.class_booking import (
@@ -108,3 +108,87 @@ class TestClassBooking(unittest.TestCase):
 
         self.assertEqual(booking.status, "Cancelled")
         self.assertIsNone(booking.waitlist_position)
+
+
+    @patch(
+        "gym_management.gym_management.doctype.class_booking.class_booking.frappe.get_all"
+    )
+    @patch(
+        "gym_management.gym_management.doctype.class_booking.class_booking.frappe.db.count",
+        return_value=0,
+    )
+    @patch(
+        "gym_management.gym_management.doctype.class_booking.class_booking.frappe.get_doc"
+    )
+    def test_cancelling_booking_promotes_first_valid_waitlisted_member(
+        self, mock_get_doc, mock_count, mock_get_all
+    ):
+        session = SimpleNamespace(
+            status="Scheduled",
+            start_datetime=None,
+            capacity=2,
+        )
+        promoted_booking = SimpleNamespace(
+            status="Waitlisted",
+            waitlist_position=1,
+            save=Mock(),
+        )
+
+        def get_doc_side_effect(doctype, name=None):
+            if doctype == "Class Session":
+                return session
+            return promoted_booking
+
+        mock_get_doc.side_effect = get_doc_side_effect
+        mock_get_all.side_effect = [
+            [SimpleNamespace(name="BOOKING-2", member="MEMBER-2")],
+            [SimpleNamespace(start_date=None, end_date=None)],
+        ]
+
+        cancelled_booking = ClassBooking({
+            "doctype": "Class Booking",
+            "class_session": "SESSION-TEST",
+            "status": "Cancelled",
+        })
+
+        with patch.object(
+            ClassBooking,
+            "get_doc_before_save",
+            return_value=SimpleNamespace(status="Booked"),
+        ), patch(
+            "gym_management.gym_management.doctype.class_booking.class_booking.getdate",
+            return_value=__import__("datetime").date(2026, 10, 13),
+        ):
+            cancelled_booking.on_update()
+
+        self.assertEqual(promoted_booking.status, "Booked")
+        self.assertIsNone(promoted_booking.waitlist_position)
+        promoted_booking.save.assert_called_once_with(ignore_permissions=True)
+
+    @patch(
+        "gym_management.gym_management.doctype.class_booking.class_booking.frappe.get_doc"
+    )
+    def test_cancellation_skips_session_and_membership_validation(self, mock_get_doc):
+        booking = ClassBooking({
+            "doctype": "Class Booking",
+            "class_session": "SESSION-TEST",
+            "member": "MEMBER-TEST",
+            "status": "Cancelled",
+            "waitlist_position": 2,
+        })
+
+        with patch.object(booking, "validate_session") as validate_session, patch.object(
+            booking, "validate_membership"
+        ) as validate_membership, patch.object(
+            booking, "validate_duplicate_booking"
+        ) as validate_duplicate, patch.object(
+            booking, "validate_capacity"
+        ) as validate_capacity:
+            booking.validate()
+
+        self.assertIsNone(booking.waitlist_position)
+        validate_session.assert_not_called()
+        validate_membership.assert_not_called()
+        validate_duplicate.assert_not_called()
+        validate_capacity.assert_not_called()
+

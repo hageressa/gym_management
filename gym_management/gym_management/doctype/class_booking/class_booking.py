@@ -6,7 +6,84 @@ from frappe.utils import getdate, now_datetime
 
 
 class ClassBooking(Document):
+    def on_update(self):
+        previous = self.get_doc_before_save()
+
+        if not previous or previous.status == "Cancelled":
+            return
+
+        if self.status != "Cancelled":
+            return
+
+        session = frappe.get_doc("Class Session", self.class_session)
+
+        if session.status != "Scheduled":
+            return
+
+        if session.start_datetime and session.start_datetime <= now_datetime():
+            return
+
+        confirmed_count = frappe.db.count(
+            "Class Booking",
+            {
+                "class_session": self.class_session,
+                "status": ["in", ["Booked", "Attended"]],
+            },
+        )
+
+        if confirmed_count >= session.capacity:
+            return
+
+        waitlisted = frappe.get_all(
+            "Class Booking",
+            filters={
+                "class_session": self.class_session,
+                "status": "Waitlisted",
+            },
+            fields=["name", "member"],
+            order_by="waitlist_position asc",
+        )
+
+        session_date = (
+            getdate(session.start_datetime)
+            if session.start_datetime
+            else getdate()
+        )
+
+        for row in waitlisted:
+            memberships = frappe.get_all(
+                "Gym Membership",
+                filters={
+                    "member": row.member,
+                    "docstatus": 1,
+                    "status": "Active",
+                },
+                fields=["start_date", "end_date"],
+            )
+
+            has_valid_membership = any(
+                (not membership.start_date or getdate(membership.start_date) <= session_date)
+                and (
+                    not membership.end_date
+                    or getdate(membership.end_date) >= session_date
+                )
+                for membership in memberships
+            )
+
+            if not has_valid_membership:
+                continue
+
+            booking = frappe.get_doc("Class Booking", row.name)
+            booking.status = "Booked"
+            booking.waitlist_position = None
+            booking.save(ignore_permissions=True)
+            break
+
     def validate(self):
+        if self.status == "Cancelled":
+            self.waitlist_position = None
+            return
+
         self.validate_session()
         self.validate_membership()
         self.validate_duplicate_booking()
