@@ -73,6 +73,10 @@ class ClassBooking(Document):
         if not session.capacity or session.capacity < 1:
             frappe.throw("Set a valid capacity on the Class Session.")
 
+        if self.status == "Cancelled":
+            self.waitlist_position = None
+            return
+
         confirmed_count = frappe.db.count(
             "Class Booking",
             {
@@ -83,6 +87,13 @@ class ClassBooking(Document):
         )
 
         if confirmed_count >= session.capacity:
+            settings = frappe.get_single("Gym Settings")
+
+            if not settings.enable_waitlist:
+                frappe.throw(
+                    "This class session is full and the waitlist is disabled."
+                )
+
             self.status = "Waitlisted"
 
         if self.status == "Waitlisted" and not self.waitlist_position:
