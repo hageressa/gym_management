@@ -20,6 +20,25 @@
       "label": "Expiring Within (Days)",
       "default": 30,
       "reqd": 0
+    },
+    {
+      "fieldname": "from_date",
+      "fieldtype": "Date",
+      "label": "Expiry From Date",
+      "reqd": 0
+    },
+    {
+      "fieldname": "to_date",
+      "fieldtype": "Date",
+      "label": "Expiry To Date",
+      "reqd": 0
+    },
+    {
+      "fieldname": "membership_plan",
+      "fieldtype": "Link",
+      "label": "Membership Plan",
+      "options": "Membership Plan",
+      "reqd": 0
     }
   ],
   "is_standard": "Yes",

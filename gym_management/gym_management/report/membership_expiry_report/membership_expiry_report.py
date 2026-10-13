@@ -62,11 +62,32 @@ def execute(filters=None):
     conditions = ["docstatus = 1", "end_date IS NOT NULL"]
     values = {}
 
+    if filters.get("from_date") and filters.get("to_date"):
+        if getdate(filters.from_date) > getdate(filters.to_date):
+            frappe.throw("Expiry From Date cannot be after Expiry To Date.")
+
+    if filters.get("from_date"):
+        conditions.append("end_date >= %(from_date)s")
+        values["from_date"] = filters.from_date
+
+    if filters.get("to_date"):
+        conditions.append("end_date <= %(to_date)s")
+        values["to_date"] = filters.to_date
+
+    if filters.get("membership_plan"):
+        conditions.append("membership_plan = %(membership_plan)s")
+        values["membership_plan"] = filters.membership_plan
+
     if filters.get("status"):
         conditions.append("status = %(status)s")
         values["status"] = filters.status
 
-    if filters.get("days") is not None and filters.get("days") != "":
+    if (
+        not filters.get("from_date")
+        and not filters.get("to_date")
+        and filters.get("days") is not None
+        and filters.get("days") != ""
+    ):
         days = max(int(filters.days), 0)
         conditions.append("end_date <= %(end_date)s")
         values["end_date"] = add_days(today(), days)
