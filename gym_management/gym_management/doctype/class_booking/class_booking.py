@@ -77,7 +77,36 @@ class ClassBooking(Document):
             booking.status = "Booked"
             booking.waitlist_position = None
             booking.save(ignore_permissions=True)
+            self.notify_member_booking_confirmed(row.member, booking.name)
             break
+
+    def notify_member_booking_confirmed(self, member_id, booking_name):
+        member = frappe.db.get_value(
+            "Gym Member",
+            member_id,
+            ["member_name", "email"],
+            as_dict=True,
+        )
+
+        if not member or not member.email:
+            return
+
+        try:
+            frappe.sendmail(
+                recipients=[member.email],
+                subject="Your gym class booking is confirmed",
+                message=(
+                    f"Hello {frappe.utils.escape_html(member.member_name or 'Member')},"
+                    f"<p>Your waitlisted class booking has been confirmed.</p>"
+                    f"<p>Booking reference: {frappe.utils.escape_html(booking_name)}</p>"
+                ),
+                delayed=True,
+            )
+        except Exception:
+            frappe.log_error(
+                frappe.get_traceback(),
+                "Gym waitlist promotion email failed",
+            )
 
     def validate(self):
         if self.status == "Cancelled":

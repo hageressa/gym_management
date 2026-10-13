@@ -131,6 +131,7 @@ class TestClassBooking(unittest.TestCase):
         promoted_booking = SimpleNamespace(
             status="Waitlisted",
             waitlist_position=1,
+            name="BOOKING-2",
             save=Mock(),
         )
 
@@ -155,7 +156,10 @@ class TestClassBooking(unittest.TestCase):
             ClassBooking,
             "get_doc_before_save",
             return_value=SimpleNamespace(status="Booked"),
-        ), patch(
+        ), patch.object(
+            cancelled_booking,
+            "notify_member_booking_confirmed",
+        ) as notify_member, patch(
             "gym_management.gym_management.doctype.class_booking.class_booking.getdate",
             return_value=__import__("datetime").date(2026, 10, 13),
         ):
@@ -164,6 +168,7 @@ class TestClassBooking(unittest.TestCase):
         self.assertEqual(promoted_booking.status, "Booked")
         self.assertIsNone(promoted_booking.waitlist_position)
         promoted_booking.save.assert_called_once_with(ignore_permissions=True)
+        notify_member.assert_called_once_with("MEMBER-2", "BOOKING-2")
 
     @patch(
         "gym_management.gym_management.doctype.class_booking.class_booking.frappe.get_doc"
@@ -191,4 +196,3 @@ class TestClassBooking(unittest.TestCase):
         validate_membership.assert_not_called()
         validate_duplicate.assert_not_called()
         validate_capacity.assert_not_called()
-
