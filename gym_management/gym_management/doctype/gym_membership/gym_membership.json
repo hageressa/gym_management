@@ -17,7 +17,8 @@
   "freeze_history",
   "sales_invoice",
   "subscription",
-  "auto_renew"
+  "auto_renew",
+  "expiry_reminder_sent"
  ],
  "fields": [
   {
@@ -95,6 +96,15 @@
    "fieldname": "auto_renew",
    "fieldtype": "Check",
    "label": "Auto Renew"
+  },
+  {
+   "fieldname": "expiry_reminder_sent",
+   "fieldtype": "Check",
+   "label": "Expiry Reminder Sent",
+   "default": "0",
+   "hidden": 1,
+   "print_hide": 1,
+   "no_copy": 1
   }
  ],
  "grid_page_length": 50,
