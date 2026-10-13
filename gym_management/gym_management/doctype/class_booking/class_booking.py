@@ -174,6 +174,14 @@ class ClassBooking(Document):
         if not self.class_session:
             return
 
+        # Lock the session row so concurrent booking transactions serialize
+        # their capacity checks. The lock is held until the transaction ends.
+        frappe.db.get_value(
+            "Class Session",
+            self.class_session,
+            "name",
+            for_update=True,
+        )
         session = frappe.get_doc("Class Session", self.class_session)
 
         if not session.capacity or session.capacity < 1:
