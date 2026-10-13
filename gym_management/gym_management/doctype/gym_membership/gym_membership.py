@@ -74,12 +74,24 @@ class GymMembership(Document):
                 "Set a Default Receivable Account in Company first."
             )
 
-        if (
-            not company_doc.default_income_account
-            or not company_doc.cost_center
-        ):
+        settings = frappe.get_single("Gym Settings")
+        income_account = (
+            settings.default_income_account
+            or company_doc.default_income_account
+        )
+
+        if not income_account or not company_doc.cost_center:
             frappe.throw(
-                "Set the Default Income Account and Cost Center in Company first."
+                "Set the Default Income Account in Gym Settings or Company, "
+                "and set the Cost Center in Company."
+            )
+
+        account_company = frappe.db.get_value(
+            "Account", income_account, "company"
+        )
+        if account_company != company:
+            frappe.throw(
+                "The configured income account must belong to the selected Company."
             )
 
         invoice = frappe.get_doc({
@@ -98,7 +110,7 @@ class GymMembership(Document):
                 "item_code": plan.item,
                 "qty": 1,
                 "rate": plan.price,
-                "income_account": company_doc.default_income_account,
+                "income_account": income_account,
                 "cost_center": company_doc.cost_center,
             }],
         })
