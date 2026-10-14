@@ -2,7 +2,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_months, getdate, get_datetime, now_datetime, today
+from frappe.utils import getdate, get_datetime, now_datetime, today
 
 from gym_management.utils import get_valid_membership
 
@@ -21,8 +21,6 @@ def set_booking_metadata(doc, method=None):
         start = frappe.db.get_value("Class Session", doc.class_session, "start_datetime")
         if start:
             doc.membership = get_valid_membership(doc.member, getdate(start))
-
-    _validate_class_pack_balance(doc)
 
 
 def update_session_booked_count(doc, method=None):
@@ -44,13 +42,20 @@ def update_session_booked_count(doc, method=None):
 
 
 def apply_booking_status_effects(doc, method=None):
-    """Class Booking on_update: class-pack credit, late-cancel and no-show warnings."""
-    if not doc.has_value_changed("status"):
+    """Class Booking after_insert / on_update: class-pack credit, late-cancel and no-show warnings."""
+    previous = doc.get_doc_before_save()
+    previous_status = previous.status if previous else None
+
+    # Class pack: taking a Booked spot uses one class, cancelling it gives the class back.
+    if doc.status == "Booked" and previous_status != "Booked":
+        _adjust_class_credit(doc, -1)
+    elif previous_status == "Booked" and doc.status == "Cancelled":
+        _adjust_class_credit(doc, +1)
+
+    if previous_status == doc.status:
         return
 
-    if doc.status == "Attended":
-        _deduct_class_credit(doc)
-    elif doc.status == "Cancelled":
+    if doc.status == "Cancelled":
         _warn_late_cancellation(doc)
     elif doc.status == "No Show":
         _warn_no_show_limit(doc)
@@ -63,26 +68,26 @@ def _is_class_pack(membership_name):
     )
 
 
-def _validate_class_pack_balance(doc):
-    """Block new bookings when a class pack has no classes left."""
-    if doc.status not in ("Booked", "Waitlisted") or not doc.membership:
-        return
-    if not _is_class_pack(doc.membership):
-        return
-    remaining = frappe.db.get_value("Gym Membership", doc.membership, "classes_remaining")
-    if not remaining or remaining < 1:
-        frappe.throw(_("This class pack has no classes remaining."))
+def _adjust_class_credit(doc, change):
+    """Add (+1) or remove (-1) one class from the booking's class pack.
 
-
-def _deduct_class_credit(doc):
+    Raises when a booking would take a class from an empty pack. Raising inside
+    the save rolls back the booking too, so the member is never charged twice.
+    """
     if not doc.membership or not _is_class_pack(doc.membership):
         return
+
     remaining = frappe.db.get_value("Gym Membership", doc.membership, "classes_remaining") or 0
+    new_remaining = remaining + change
+
+    if new_remaining < 0:
+        frappe.throw(_("This class pack has no classes remaining."))
+
     frappe.db.set_value(
         "Gym Membership",
         doc.membership,
         "classes_remaining",
-        max(remaining - 1, 0),
+        new_remaining,
         update_modified=False,
     )
 
@@ -104,7 +109,7 @@ def _warn_no_show_limit(doc):
     limit = frappe.db.get_single_value("Gym Settings", "no_show_limit") or 0
     if not limit:
         return
-    month_start = add_months(getdate(today()).replace(day=1), 0)
+    month_start = getdate(today()).replace(day=1)
     no_shows = frappe.db.count(
         "Class Booking",
         {"member": doc.member, "status": "No Show", "modified": [">=", month_start]},

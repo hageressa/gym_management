@@ -1,5 +1,4 @@
 import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from frappe.tests.utils import FrappeTestCase
@@ -20,6 +19,17 @@ def make_booking(**values):
     defaults.update(values)
     for key, value in defaults.items():
         setattr(booking, key, value)
+    return booking
+
+
+def with_previous_status(booking, status):
+    """Pretend the booking was saved before with this status (None means a new booking)."""
+    if status is None:
+        booking.get_doc_before_save.return_value = None
+    else:
+        previous = MagicMock()
+        previous.status = status
+        booking.get_doc_before_save.return_value = previous
     return booking
 
 
@@ -82,10 +92,9 @@ class TestSessionBookedCount(FrappeTestCase):
 class TestClassPackCredits(FrappeTestCase):
     @patch("gym_management.events.frappe.db.set_value")
     @patch("gym_management.events.frappe.db.get_value")
-    def test_attended_booking_deducts_one_class(self, get_value, set_value):
+    def test_new_booking_takes_one_class(self, get_value, set_value):
         get_value.side_effect = ["PLAN-PACK", "Class Pack", 5]
-        booking = make_booking(status="Attended", membership="MEM-1")
-        booking.has_value_changed.return_value = True
+        booking = with_previous_status(make_booking(membership="MEM-1"), None)
 
         events.apply_booking_status_effects(booking)
 
@@ -93,30 +102,54 @@ class TestClassPackCredits(FrappeTestCase):
             "Gym Membership", "MEM-1", "classes_remaining", 4, update_modified=False
         )
 
+    @patch("gym_management.events._warn_late_cancellation")
+    @patch("gym_management.events.frappe.db.set_value")
+    @patch("gym_management.events.frappe.db.get_value")
+    def test_cancelling_a_booked_class_gives_it_back(self, get_value, set_value, warn):
+        get_value.side_effect = ["PLAN-PACK", "Class Pack", 3]
+        booking = with_previous_status(make_booking(status="Cancelled", membership="MEM-1"), "Booked")
+
+        events.apply_booking_status_effects(booking)
+
+        set_value.assert_called_once_with(
+            "Gym Membership", "MEM-1", "classes_remaining", 4, update_modified=False
+        )
+
+    @patch("gym_management.events.frappe.throw", side_effect=Exception("empty"))
+    @patch("gym_management.events.frappe.db.set_value")
+    @patch("gym_management.events.frappe.db.get_value")
+    def test_empty_class_pack_blocks_booking(self, get_value, set_value, throw):
+        get_value.side_effect = ["PLAN-PACK", "Class Pack", 0]
+        booking = with_previous_status(make_booking(membership="MEM-1"), None)
+
+        with self.assertRaises(Exception):
+            events.apply_booking_status_effects(booking)
+
+        set_value.assert_not_called()
+
+    @patch("gym_management.events.frappe.db.set_value")
+    @patch("gym_management.events.frappe.db.get_value")
+    def test_attending_does_not_charge_again(self, get_value, set_value):
+        booking = with_previous_status(make_booking(status="Attended", membership="MEM-1"), "Booked")
+
+        events.apply_booking_status_effects(booking)
+
+        get_value.assert_not_called()
+        set_value.assert_not_called()
+
     @patch("gym_management.events.frappe.db.set_value")
     @patch("gym_management.events.frappe.db.get_value")
     def test_time_based_membership_is_not_charged(self, get_value, set_value):
         get_value.side_effect = ["PLAN-MONTH", "Months"]
-        booking = make_booking(status="Attended", membership="MEM-1")
-        booking.has_value_changed.return_value = True
+        booking = with_previous_status(make_booking(membership="MEM-1"), None)
 
         events.apply_booking_status_effects(booking)
 
         set_value.assert_not_called()
 
-    @patch("gym_management.events.frappe.throw", side_effect=Exception("empty"))
-    @patch("gym_management.events.frappe.db.get_value")
-    def test_empty_class_pack_blocks_new_booking(self, get_value, throw):
-        get_value.side_effect = ["PLAN-PACK", "Class Pack", 0]
-        booking = make_booking(membership="MEM-1")
-
-        with self.assertRaises(Exception):
-            events._validate_class_pack_balance(booking)
-
     @patch("gym_management.events.frappe.db.get_value")
     def test_unchanged_status_has_no_effect(self, get_value):
-        booking = make_booking(status="Attended", membership="MEM-1")
-        booking.has_value_changed.return_value = False
+        booking = with_previous_status(make_booking(status="Booked", membership="MEM-1"), "Booked")
 
         events.apply_booking_status_effects(booking)
 
