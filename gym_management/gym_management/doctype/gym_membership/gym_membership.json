@@ -78,7 +78,8 @@
    "fieldname": "freeze_history",
    "fieldtype": "Table",
    "label": "Freeze History",
-   "options": "Membership Freeze"
+   "options": "Membership Freeze",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "sales_invoice",

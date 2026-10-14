@@ -7,6 +7,30 @@ from frappe.utils import getdate, now_datetime
 class GymCheckIn(Document):
     def validate(self):
         self.validate_membership()
+        self.validate_class_booking()
+
+    def validate_class_booking(self):
+        if not self.class_booking:
+            return
+
+        booking = frappe.get_doc("Class Booking", self.class_booking)
+
+        if booking.member != self.member:
+            frappe.throw("The class booking does not belong to this member.")
+
+        if booking.status not in ("Booked", "Attended"):
+            frappe.throw(
+                "Check-in requires a confirmed class booking."
+            )
+
+    def on_update(self):
+        if not self.class_booking:
+            return
+
+        booking = frappe.get_doc("Class Booking", self.class_booking)
+        if booking.status == "Booked":
+            booking.status = "Attended"
+            booking.save(ignore_permissions=True)
 
     def validate_membership(self):
         if not self.member:
@@ -43,6 +67,16 @@ class GymCheckIn(Document):
 
         if membership.end_date and getdate(membership.end_date) < today:
             frappe.throw("Entry denied: membership has expired.")
+
+        for row in membership.get("freeze_history") or []:
+            if (
+                row.freeze_from
+                and row.freeze_to
+                and getdate(row.freeze_from) <= today <= getdate(row.freeze_to)
+            ):
+                frappe.throw(
+                    "Entry denied: membership is frozen today."
+                )
 
         self.gym_membership = membership.name
 

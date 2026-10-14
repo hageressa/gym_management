@@ -6,32 +6,86 @@ from frappe.utils import add_days, add_months, getdate
 
 class GymMembership(Document):
     def validate(self):
+        self.validate_freeze_history()
         self.calculate_end_date()
+
+    def validate_freeze_history(self):
+        if not self.membership_plan:
+            return
+
+        plan = frappe.get_doc("Membership Plan", self.membership_plan)
+        max_freeze_days = int(getattr(plan, "max_freeze_days", 0) or 0)
+        total_freeze_days = 0
+        periods = []
+
+        for row in self.get("freeze_history") or []:
+            if not row.freeze_from or not row.freeze_to:
+                frappe.throw("Freeze From and Freeze To are required.")
+
+            freeze_from = getdate(row.freeze_from)
+            freeze_to = getdate(row.freeze_to)
+
+            if freeze_to <= freeze_from:
+                frappe.throw("Freeze To must be after Freeze From.")
+
+            row.days = (freeze_to - freeze_from).days + 1
+            total_freeze_days += row.days
+            periods.append((freeze_from, freeze_to))
+
+        periods.sort(key=lambda period: period[0])
+        for previous, current in zip(periods, periods[1:]):
+            if current[0] <= previous[1]:
+                frappe.throw("Membership freeze periods cannot overlap.")
+
+        if total_freeze_days > max_freeze_days:
+            frappe.throw(
+                f"Total freeze days ({total_freeze_days}) exceed "
+                f"the plan limit ({max_freeze_days})."
+            )
 
     def calculate_end_date(self):
         if not self.start_date or not self.membership_plan:
             return
 
-        plan = frappe.get_doc(
-            "Membership Plan", self.membership_plan
-        )
+        plan = frappe.get_doc("Membership Plan", self.membership_plan)
 
         if plan.duration_type == "Days":
-            self.end_date = add_days(
-                getdate(self.start_date),
-                plan.duration_value,
+            base_end_date = add_days(
+                getdate(self.start_date), plan.duration_value
             )
         elif plan.duration_type == "Months":
-            self.end_date = add_months(
-                getdate(self.start_date),
-                plan.duration_value,
+            base_end_date = add_months(
+                getdate(self.start_date), plan.duration_value
             )
         else:
             self.end_date = None
+            return
+
+        total_freeze_days = sum(
+            (getdate(row.freeze_to) - getdate(row.freeze_from)).days + 1
+            for row in (self.get("freeze_history") or [])
+            if row.freeze_from and row.freeze_to
+        )
+        self.end_date = add_days(base_end_date, total_freeze_days)
 
     def on_submit(self):
+        # Do not recreate an invoice or overwrite a later membership status.
         if self.sales_invoice:
             return
+
+        other_active = frappe.db.exists(
+            "Gym Membership",
+            {
+                "member": self.member,
+                "docstatus": 1,
+                "status": "Active",
+                "name": ["!=", self.name],
+            },
+        )
+        if other_active:
+            frappe.throw(
+                "This member already has an active membership."
+            )
 
         plan = frappe.get_doc(
             "Membership Plan", self.membership_plan
@@ -119,7 +173,7 @@ class GymMembership(Document):
         invoice.submit()
 
         self.db_set("sales_invoice", invoice.name)
-
+        self.db_set("status", "Active")
     def on_cancel(self):
         if not self.sales_invoice:
             return

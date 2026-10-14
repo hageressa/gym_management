@@ -58,17 +58,38 @@ class ClassBooking(Document):
                     "docstatus": 1,
                     "status": "Active",
                 },
-                fields=["start_date", "end_date"],
+                fields=["name", "start_date", "end_date"],
             )
 
-            has_valid_membership = any(
-                (not membership.start_date or getdate(membership.start_date) <= session_date)
-                and (
-                    not membership.end_date
-                    or getdate(membership.end_date) >= session_date
+            has_valid_membership = False
+            for membership_row in memberships:
+                if (
+                    membership_row.start_date
+                    and getdate(membership_row.start_date) > session_date
+                ):
+                    continue
+
+                if (
+                    membership_row.end_date
+                    and getdate(membership_row.end_date) < session_date
+                ):
+                    continue
+
+                membership_doc = frappe.get_doc(
+                    "Gym Membership", membership_row.name
                 )
-                for membership in memberships
-            )
+                is_frozen = any(
+                    freeze.freeze_from
+                    and freeze.freeze_to
+                    and getdate(freeze.freeze_from)
+                    <= session_date
+                    <= getdate(freeze.freeze_to)
+                    for freeze in (membership_doc.get("freeze_history") or [])
+                )
+
+                if not is_frozen:
+                    has_valid_membership = True
+                    break
 
             if not has_valid_membership:
                 continue
@@ -113,6 +134,12 @@ class ClassBooking(Document):
             self.waitlist_position = None
             return
 
+        # Completed bookings must remain editable after the session ends.
+        if not self.is_new() and self.status in ("Attended", "No Show"):
+            self.validate_duplicate_booking()
+            self.waitlist_position = None
+            return
+
         self.validate_session()
         self.validate_membership()
         self.validate_duplicate_booking()
@@ -144,15 +171,48 @@ class ClassBooking(Document):
             fields=["name", "start_date", "end_date"],
         )
 
-        today = getdate()
-        valid = any(
-            (not m.start_date or getdate(m.start_date) <= today)
-            and (not m.end_date or getdate(m.end_date) >= today)
-            for m in memberships
-        )
+        session = frappe.get_doc("Class Session", self.class_session)
+        if not session.start_datetime:
+            frappe.throw("The class session must have a start datetime.")
 
-        if not valid:
-            frappe.throw("The member does not have a valid active membership.")
+        session_date = getdate(session.start_datetime)
+
+        for membership_row in memberships:
+            if (
+                membership_row.start_date
+                and getdate(membership_row.start_date) > session_date
+            ):
+                continue
+
+            if (
+                membership_row.end_date
+                and getdate(membership_row.end_date) < session_date
+            ):
+                continue
+
+            membership = frappe.get_doc(
+                "Gym Membership", membership_row.name
+            )
+            frozen = any(
+                row.freeze_from
+                and row.freeze_to
+                and getdate(row.freeze_from) <= session_date
+                <= getdate(row.freeze_to)
+                for row in (membership.get("freeze_history") or [])
+            )
+
+            if frozen:
+                continue
+
+            return
+
+        if memberships:
+            frappe.throw(
+                "The member has no valid membership for this session date, "
+                "or the membership is frozen."
+            )
+
+        frappe.throw("The member does not have a valid active membership.")
 
     def validate_duplicate_booking(self):
         if not self.member or not self.class_session:
@@ -175,7 +235,7 @@ class ClassBooking(Document):
             return
 
         # Lock the session row so concurrent booking transactions serialize
-        # their capacity checks. The lock is held until the transaction ends.
+# their capacity checks. The lock is held until the transaction ends.
         frappe.db.get_value(
             "Class Session",
             self.class_session,
@@ -191,6 +251,11 @@ class ClassBooking(Document):
             self.waitlist_position = None
             return
 
+        # Preserve completed states during unrelated edits.
+        if self.status in ("Attended", "No Show"):
+            self.waitlist_position = None
+            return
+
         confirmed_count = frappe.db.count(
             "Class Booking",
             {
@@ -202,24 +267,24 @@ class ClassBooking(Document):
 
         if confirmed_count >= session.capacity:
             settings = frappe.get_single("Gym Settings")
-
             if not settings.enable_waitlist:
                 frappe.throw(
                     "This class session is full and the waitlist is disabled."
                 )
-
             self.status = "Waitlisted"
 
-        if self.status == "Waitlisted" and not self.waitlist_position:
-            last_position = frappe.db.get_value(
-                "Class Booking",
-                {
-                    "class_session": self.class_session,
-                    "status": "Waitlisted",
-                },
-                "waitlist_position",
-                order_by="waitlist_position desc",
-            )
-            self.waitlist_position = (last_position or 0) + 1
-        elif self.status != "Waitlisted":
+        if self.status == "Waitlisted":
+            if not self.waitlist_position:
+                last_position = frappe.db.get_value(
+                    "Class Booking",
+                    {
+                        "class_session": self.class_session,
+                        "status": "Waitlisted",
+                        "name": ["!=", self.name or ""],
+                    },
+                    "waitlist_position",
+                    order_by="waitlist_position desc",
+                )
+                self.waitlist_position = (last_position or 0) + 1
+        else:
             self.waitlist_position = None
