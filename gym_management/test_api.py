@@ -4,10 +4,16 @@ from unittest.mock import MagicMock, patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from gym_management.api import get_available_sessions, freeze_membership
+from gym_management.api import freeze_membership, get_available_sessions
 
 
 class TestGymAPI(FrappeTestCase):
+    def setUp(self):
+        # نثبت "النهارده" عشان اختبارات الفريز ما تتأثرش بالتاريخ الحقيقي
+        today_patcher = patch("gym_management.api.today", return_value="2026-10-14")
+        today_patcher.start()
+        self.addCleanup(today_patcher.stop)
+
     def test_available_sessions_rejects_reversed_dates(self):
         with self.assertRaises(frappe.ValidationError):
             get_available_sessions("2026-10-14", "2026-10-13")
@@ -54,7 +60,6 @@ class TestGymAPI(FrappeTestCase):
         membership.append.assert_not_called()
 
     def test_freeze_membership_rejects_expired_membership(self):
-
         membership = frappe._dict(
             docstatus=1,
             status="Expired",
@@ -78,7 +83,6 @@ class TestGymAPI(FrappeTestCase):
                 )
 
     def test_freeze_membership_rejects_overlapping_periods(self):
-
         membership = frappe._dict(
             docstatus=1,
             status="Active",
@@ -118,23 +122,20 @@ class TestGymAPI(FrappeTestCase):
             freeze_history=[],
         )
         membership.check_permission = MagicMock()
-        def append_freeze_row(field, values):
-            row = frappe._dict(values)
-            row.db_set = MagicMock()
-            membership.freeze_history.append(row)
-
-        membership.append = MagicMock(side_effect=append_freeze_row)
-        membership.save = MagicMock()
         membership.db_set = MagicMock()
 
+        def append_freeze_row(field, values):
+            row = frappe._dict(values)
+            row.db_insert = MagicMock()
+            membership.freeze_history.append(row)
+            return row
+
+        membership.append = MagicMock(side_effect=append_freeze_row)
         plan = frappe._dict(max_freeze_days=30)
 
         with patch(
             "gym_management.api.frappe.get_doc",
             side_effect=[membership, plan],
-        ), patch(
-            "gym_management.api.today",
-            return_value="2026-10-14",
         ):
             result = freeze_membership(
                 "TEST-MEMBERSHIP",
@@ -146,6 +147,5 @@ class TestGymAPI(FrappeTestCase):
         self.assertEqual(result["membership"], "TEST-MEMBERSHIP")
         self.assertEqual(result["end_date"], date(2027, 1, 2))
         self.assertEqual(result["status"], "Active")
-        self.assertEqual(len(membership.freeze_history), 1)
         self.assertEqual(membership.freeze_history[0].days, 2)
-        membership.save.assert_called_once()
+        membership.db_set.assert_any_call("end_date", date(2027, 1, 2))

@@ -1,11 +1,12 @@
 import frappe
+from frappe import _
 from frappe.utils import add_days, getdate, today
 
 
 @frappe.whitelist()
 def book_class(session, member):
     if not session or not member:
-        frappe.throw("Session and member are required.")
+        frappe.throw(_("Session and member are required."))
 
     booking = frappe.get_doc({
         "doctype": "Class Booking",
@@ -30,7 +31,7 @@ def get_available_sessions(date_from, date_to):
     end_date = getdate(date_to)
 
     if end_date < start_date:
-        frappe.throw("End date cannot be before start date.")
+        frappe.throw(_("End date cannot be before start date."))
 
     sessions = frappe.get_all(
         "Class Session",
@@ -80,109 +81,84 @@ def get_available_sessions(date_from, date_to):
 
 @frappe.whitelist()
 def freeze_membership(membership_name, freeze_from, freeze_to, reason=None):
-    if not membership_name or not freeze_from or not freeze_to:
-        frappe.throw("Membership, Freeze From, and Freeze To are required.")
-
     membership = frappe.get_doc("Gym Membership", membership_name)
     membership.check_permission("write")
 
-    if membership.docstatus != 1:
-        frappe.throw("Only submitted memberships can be frozen.")
-    if membership.status not in ("Active", "Frozen"):
-        frappe.throw("Only active or frozen memberships can be frozen.")
+    start, end = getdate(freeze_from), getdate(freeze_to)
+    validate_freeze_period(membership, start, end)
 
-    start = getdate(freeze_from)
-    end = getdate(freeze_to)
-    current_date = getdate(today())
+    days = (end - start).days + 1
 
-    if end <= start:
-        frappe.throw("Freeze To must be after Freeze From.")
-    if end < current_date:
-        frappe.throw("Freeze To cannot be in the past.")
-
-    plan = frappe.get_doc("Membership Plan", membership.membership_plan)
-    max_days = int(getattr(plan, "max_freeze_days", 0) or 0)
-
-    periods = []
-    total_days = 0
-    for row in membership.get("freeze_history") or []:
-        if not row.freeze_from or not row.freeze_to:
-            frappe.throw("Freeze From and Freeze To are required.")
-        row_start = getdate(row.freeze_from)
-        row_end = getdate(row.freeze_to)
-        if row_end <= row_start:
-            frappe.throw("Freeze To must be after Freeze From.")
-        row.days = (row_end - row_start).days + 1
-        total_days += row.days
-        periods.append((row_start, row_end))
-
-    if any(start <= old_end and end >= old_start for old_start, old_end in periods):
-        frappe.throw("Membership freeze periods cannot overlap.")
-
-    new_days = (end - start).days + 1
-    if total_days + new_days > max_days:
-        frappe.throw(
-            f"Total freeze days ({total_days + new_days}) exceed "
-            f"the plan limit ({max_days})."
-        )
-
-    membership.append(
+    # الـ Membership submitted، فبنكتب التغييرات مباشرة بدل save()
+    row = membership.append(
         "freeze_history",
-        {
-            "freeze_from": start,
-            "freeze_to": end,
-            "days": new_days,
-            "reason": reason,
-        },
+        {"freeze_from": start, "freeze_to": end, "days": days, "reason": reason},
     )
+    row.db_insert()
 
-    # Explicitly calculate extension because this document is already submitted.
-    membership.end_date = add_days(getdate(membership.end_date), new_days)
-    membership.save()
+    new_end_date = add_days(getdate(membership.end_date), days)
+    membership.db_set("end_date", new_end_date)
 
-    # Persist values explicitly for a submitted document.
-    for row in membership.get("freeze_history") or []:
-        if row.freeze_from and row.freeze_to:
-            row.db_set(
-                "days",
-                (getdate(row.freeze_to) - getdate(row.freeze_from)).days + 1,
-            )
-    membership.db_set("end_date", membership.end_date)
-
-    if start <= current_date <= end:
+    if start <= getdate(today()) <= end:
         membership.db_set("status", "Frozen")
 
     return {
         "membership": membership.name,
-        "end_date": membership.end_date,
-        "status": "Frozen" if start <= current_date <= end else membership.status,
-        "message": "Freeze period added successfully.",
+        "end_date": new_end_date,
+        "status": membership.status,
     }
+
+
+def validate_freeze_period(membership, start, end):
+    """يتأكد إن الفترة صحيحة، ومتداخلتش مع فترات سابقة، ومش تعدي الحد المسموح."""
+    if membership.docstatus != 1 or membership.status not in ("Active", "Frozen"):
+        frappe.throw(_("Only active or frozen memberships can be frozen."))
+
+    if end <= start:
+        frappe.throw(_("Freeze To must be after Freeze From."))
+
+    if end < getdate(today()):
+        frappe.throw(_("Freeze To cannot be in the past."))
+
+    plan = frappe.get_doc("Membership Plan", membership.membership_plan)
+    plan_limit = int(plan.max_freeze_days or 0)
+
+    used_days = 0
+    for old in membership.freeze_history:
+        old_start, old_end = getdate(old.freeze_from), getdate(old.freeze_to)
+        if start <= old_end and end >= old_start:
+            frappe.throw(_("Membership freeze periods cannot overlap."))
+        used_days += (old_end - old_start).days + 1
+
+    new_days = (end - start).days + 1
+    if used_days + new_days > plan_limit:
+        frappe.throw(
+            _("Total freeze days ({0}) exceed the plan limit ({1}).").format(
+                used_days + new_days, plan_limit
+            )
+        )
+
 
 @frappe.whitelist()
 def renew_membership(membership_name):
     """Create and submit a replacement membership for an expired membership."""
     if not membership_name:
-        frappe.throw("Membership is required.")
+        frappe.throw(_("Membership is required."))
 
     old = frappe.get_doc("Gym Membership", membership_name)
     old.check_permission("read")
 
     if old.docstatus != 1:
-        frappe.throw("Only submitted memberships can be renewed.")
+        frappe.throw(_("Only submitted memberships can be renewed."))
 
     if old.status != "Expired":
-        frappe.throw("Only expired memberships can be renewed.")
+        frappe.throw(_("Only expired memberships can be renewed."))
 
     if frappe.db.exists(
         "Gym Membership",
-        {
-            "member": old.member,
-            "docstatus": 1,
-            "status": "Active",
-        },
+        {"member": old.member, "docstatus": 1, "status": "Active"},
     ):
-        frappe.throw("This member already has an active membership.")
+        frappe.throw(_("This member already has an active membership."))
 
     start_date = getdate(today())
 
