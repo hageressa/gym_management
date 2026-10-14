@@ -94,7 +94,10 @@ def sync_freeze_statuses():
             and getdate(row.freeze_from) <= current_date <= getdate(row.freeze_to)
             for row in membership.get("freeze_history") or []
         )
-        new_status = "Frozen" if is_frozen_today else "Active"
+        if membership.end_date and getdate(membership.end_date) < current_date:
+            new_status = "Expired"
+        else:
+            new_status = "Frozen" if is_frozen_today else "Active"
 
         if membership.status != new_status:
             membership.db_set("status", new_status, update_modified=False)
