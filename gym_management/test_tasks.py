@@ -19,16 +19,17 @@ class TestExpiredMembershipTask(FrappeTestCase):
         self, get_all, get_doc, db_commit
     ):
         membership = Mock()
-        membership.end_date = add_days(today(), -1)
+        membership.end_date = "2026-10-13"
         get_all.return_value = ["TEST-MEMBERSHIP"]
         get_doc.return_value = membership
 
-        update_expired_memberships()
+        with patch("gym_management.tasks.today", return_value="2026-10-14"):
+            update_expired_memberships()
 
         filters = get_all.call_args.kwargs["filters"]
         self.assertEqual(filters["docstatus"], 1)
         self.assertEqual(filters["status"], "Active")
-        self.assertEqual(filters["end_date"], ["<", today()])
+        self.assertEqual(filters["end_date"], ["<", "2026-10-14"])
         membership.db_set.assert_called_once_with(
             "status", "Expired", update_modified=False
         )
@@ -42,7 +43,8 @@ class TestExpiredMembershipTask(FrappeTestCase):
     ):
         get_all.return_value = []
 
-        update_expired_memberships()
+        with patch("gym_management.tasks.today", return_value="2026-10-14"):
+            update_expired_memberships()
 
         get_doc.assert_not_called()
         db_commit.assert_called_once()
@@ -64,14 +66,17 @@ class TestMembershipExpiryReminders(FrappeTestCase):
         membership = Mock()
         membership.member = "TEST-MEMBER"
         membership.name = "TEST-MEMBERSHIP"
-        membership.end_date = add_days(today(), 3)
+        membership.end_date = "2026-10-17"
 
         member = Mock()
         member.email = "member@example.com"
         member.member_name = "Test Member"
         get_doc.side_effect = [membership, member]
 
-        send_membership_expiry_reminders()
+        with patch("gym_management.tasks.today", return_value="2026-10-14"), patch(
+            "gym_management.tasks.add_days", return_value="2026-10-21"
+        ):
+            send_membership_expiry_reminders()
 
         sendmail.assert_called_once()
         membership.db_set.assert_called_once_with(
@@ -108,19 +113,23 @@ class TestMembershipExpiryReminders(FrappeTestCase):
         membership.member = "TEST-MEMBER"
         get_doc.side_effect = [membership, Mock(email=None)]
 
-        send_membership_expiry_reminders()
+        with patch("gym_management.tasks.today", return_value="2026-10-14"), patch(
+            "gym_management.tasks.add_days", return_value="2026-10-21"
+        ):
+            send_membership_expiry_reminders()
 
         sendmail.assert_not_called()
         membership.db_set.assert_not_called()
 
 
 class TestSyncFreezeStatuses(FrappeTestCase):
-    def _run_sync(self, status, freeze_from, freeze_to):
+    def _run_sync(self, status, freeze_from, freeze_to, end_date=None):
         row = Mock()
         row.freeze_from = freeze_from
         row.freeze_to = freeze_to
         membership = Mock()
         membership.status = status
+        membership.end_date = end_date or add_days(today(), 10)
         membership.get.return_value = [row]
 
         with patch(
@@ -146,6 +155,18 @@ class TestSyncFreezeStatuses(FrappeTestCase):
 
         membership.db_set.assert_called_once_with(
             "status", "Active", update_modified=False
+        )
+
+    def test_expired_membership_during_freeze_becomes_expired(self):
+        membership = self._run_sync(
+            "Frozen",
+            add_days(today(), -10),
+            add_days(today(), 5),
+            end_date=add_days(today(), -1),
+        )
+
+        membership.db_set.assert_called_once_with(
+            "status", "Expired", update_modified=False
         )
 
     def test_does_not_touch_status_that_is_already_correct(self):
