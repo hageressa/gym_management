@@ -8,7 +8,10 @@
   "field_order": [
     "member",
     "class_session",
+    "membership",
     "booking_date",
+    "booked_on",
+    "cancelled_on",
     "status",
     "waitlist_position"
   ],
@@ -44,6 +47,25 @@
       "label": "Waitlist Position",
       "fieldtype": "Int",
       "fieldname": "waitlist_position",
+      "read_only": 1
+    },
+    {
+      "fieldname": "membership",
+      "fieldtype": "Link",
+      "label": "Membership",
+      "options": "Gym Membership",
+      "read_only": 1
+    },
+    {
+      "fieldname": "booked_on",
+      "fieldtype": "Datetime",
+      "label": "Booked On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cancelled_on",
+      "fieldtype": "Datetime",
+      "label": "Cancelled On",
       "read_only": 1
     }
   ],

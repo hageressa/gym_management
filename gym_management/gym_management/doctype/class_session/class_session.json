@@ -12,6 +12,7 @@
     "start_datetime",
     "end_datetime",
     "capacity",
+    "booked_count",
     "status"
   ],
   "fields": [
@@ -58,6 +59,14 @@
       "fieldname": "status",
       "options": "Scheduled\nCompleted\nCancelled",
       "default": "Scheduled"
+    },
+    {
+      "fieldname": "booked_count",
+      "fieldtype": "Int",
+      "label": "Booked Count",
+      "read_only": 1,
+      "default": "0",
+      "no_copy": 1
     }
   ],
   "permissions": [

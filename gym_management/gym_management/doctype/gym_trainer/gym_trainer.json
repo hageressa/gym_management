@@ -11,6 +11,7 @@
     "email",
     "phone",
     "specialization",
+    "bio",
     "status"
   ],
   "fields": [
@@ -48,6 +49,11 @@
       "fieldname": "status",
       "options": "Active\nInactive",
       "default": "Active"
+    },
+    {
+      "fieldname": "bio",
+      "fieldtype": "Text Editor",
+      "label": "Bio"
     }
   ],
   "permissions": [
