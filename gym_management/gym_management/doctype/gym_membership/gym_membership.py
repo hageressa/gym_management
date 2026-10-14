@@ -1,13 +1,17 @@
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_days, add_months, getdate
+from frappe.utils import add_days, add_months, getdate, today
+
+from gym_management.utils import get_default_company, get_selling_price_list
 
 
 class GymMembership(Document):
     def validate(self):
         self.validate_freeze_history()
         self.calculate_end_date()
+        self.set_class_pack_balance()
 
     def validate_freeze_history(self):
         if not self.membership_plan:
@@ -68,12 +72,21 @@ class GymMembership(Document):
         )
         self.end_date = add_days(base_end_date, total_freeze_days)
 
-    def on_submit(self):
-        # Do not recreate an invoice or overwrite a later membership status.
-        if self.sales_invoice:
+    def set_class_pack_balance(self):
+        """Give a new class-pack membership its starting number of classes."""
+        if not self.is_new() or self.classes_remaining or not self.membership_plan:
             return
 
-        other_active = frappe.db.exists(
+        plan = frappe.get_doc("Membership Plan", self.membership_plan)
+        if plan.duration_type == "Class Pack":
+            self.classes_remaining = plan.duration_value
+
+    def before_submit(self):
+        self.validate_single_active_membership()
+
+    def validate_single_active_membership(self):
+        """A member may hold only one Active membership at a time."""
+        if frappe.db.exists(
             "Gym Membership",
             {
                 "member": self.member,
@@ -81,99 +94,96 @@ class GymMembership(Document):
                 "status": "Active",
                 "name": ["!=", self.name],
             },
-        )
-        if other_active:
-            frappe.throw(
-                "This member already has an active membership."
-            )
+        ):
+            frappe.throw(_("This member already has an active membership."))
 
-        plan = frappe.get_doc(
-            "Membership Plan", self.membership_plan
-        )
+    def on_submit(self):
+        """Create the Sales Invoice once, then activate the membership."""
+        # Idempotency: never create a second invoice if submit is retried.
+        if self.sales_invoice:
+            return
 
+        invoice = self.create_sales_invoice()
+        self.db_set("sales_invoice", invoice.name)
+        self.db_set("status", "Active")
+
+    def create_sales_invoice(self):
+        """Build and submit the Sales Invoice for the plan Item."""
+        plan = frappe.get_doc("Membership Plan", self.membership_plan)
         if not plan.item:
-            frappe.throw(
-                "The Membership Plan must have an Item before submission."
-            )
+            frappe.throw(_("The Membership Plan must have an Item before submission."))
 
-        member = frappe.get_doc("Gym Member", self.member)
+        customer = self.get_member_customer()
+        company_doc = self.get_billing_company()
+        price_list, price_list_currency = self.get_price_list()
+        income_account = self.get_income_account(company_doc)
 
-        if not member.customer:
-            frappe.throw(
-                "The Gym Member must be linked to a Customer before submission."
-            )
+        invoice = frappe.get_doc(
+            {
+                "doctype": "Sales Invoice",
+                "company": company_doc.name,
+                "posting_date": today(),
+                "customer": customer,
+                "debit_to": company_doc.default_receivable_account,
+                "currency": company_doc.default_currency,
+                "conversion_rate": 1,
+                "selling_price_list": price_list,
+                "price_list_currency": price_list_currency,
+                "plc_conversion_rate": 1,
+                "items": [
+                    {
+                        "item_code": plan.item,
+                        "qty": 1,
+                        "rate": plan.price,
+                        "income_account": income_account,
+                        "cost_center": company_doc.cost_center,
+                    }
+                ],
+            }
+        )
+        invoice.insert(ignore_permissions=True)
+        invoice.submit()
+        return invoice
 
-        company = frappe.defaults.get_global_default("company")
+    def get_member_customer(self):
+        customer = frappe.db.get_value("Gym Member", self.member, "customer")
+        if not customer:
+            frappe.throw(_("The Gym Member must be linked to a Customer before submission."))
+        return customer
 
+    def get_billing_company(self):
+        company = get_default_company()
         if not company:
-            company = frappe.db.get_value(
-                "Company", {"company_name": "Gym Co"}, "name"
-            )
-
-        if not company:
-            frappe.throw("Set a default Company before submitting.")
+            frappe.throw(_("Set a default Company before submitting."))
 
         company_doc = frappe.get_doc("Company", company)
-        price_list = "Standard Selling"
-
-        price_list_currency = frappe.db.get_value(
-            "Price List", price_list, "currency"
-        )
-
-        if not price_list_currency:
-            frappe.throw("Standard Selling Price List is required.")
-
         if not company_doc.default_receivable_account:
-            frappe.throw(
-                "Set a Default Receivable Account in Company first."
-            )
+            frappe.throw(_("Set a Default Receivable Account in Company first."))
+        return company_doc
 
+    def get_price_list(self):
+        price_list = get_selling_price_list()
+        currency = frappe.db.get_value("Price List", price_list, "currency") if price_list else None
+        if not currency:
+            frappe.throw(_("An enabled selling Price List is required."))
+        return price_list, currency
+
+    def get_income_account(self, company_doc):
+        """Gym Settings income account first, then the Company default."""
         settings = frappe.get_single("Gym Settings")
-        income_account = (
-            settings.default_income_account
-            or company_doc.default_income_account
-        )
+        income_account = settings.default_income_account or company_doc.default_income_account
 
         if not income_account or not company_doc.cost_center:
             frappe.throw(
-                "Set the Default Income Account in Gym Settings or Company, "
-                "and set the Cost Center in Company."
+                _(
+                    "Set the Default Income Account in Gym Settings or Company, "
+                    "and set the Cost Center in Company."
+                )
             )
 
-        account_company = frappe.db.get_value(
-            "Account", income_account, "company"
-        )
-        if account_company != company:
-            frappe.throw(
-                "The configured income account must belong to the selected Company."
-            )
-
-        invoice = frappe.get_doc({
-            "doctype": "Sales Invoice",
-            "naming_series": "ACC-SINV-.YYYY.-",
-            "company": company,
-            "posting_date": frappe.utils.today(),
-            "customer": member.customer,
-            "debit_to": company_doc.default_receivable_account,
-            "currency": company_doc.default_currency,
-            "conversion_rate": 1,
-            "selling_price_list": price_list,
-            "price_list_currency": price_list_currency,
-            "plc_conversion_rate": 1,
-            "items": [{
-                "item_code": plan.item,
-                "qty": 1,
-                "rate": plan.price,
-                "income_account": income_account,
-                "cost_center": company_doc.cost_center,
-            }],
-        })
-
-        invoice.insert(ignore_permissions=True)
-        invoice.submit()
-
-        self.db_set("sales_invoice", invoice.name)
-        self.db_set("status", "Active")
+        if frappe.db.get_value("Account", income_account, "company") != company_doc.name:
+            frappe.throw(_("The configured income account must belong to the selected Company."))
+        return income_account
 
     def on_cancel(self):
         self.db_set("status", "Cancelled")
@@ -181,9 +191,6 @@ class GymMembership(Document):
         if not self.sales_invoice:
             return
 
-        invoice = frappe.get_doc(
-            "Sales Invoice", self.sales_invoice
-        )
-
+        invoice = frappe.get_doc("Sales Invoice", self.sales_invoice)
         if invoice.docstatus == 1:
             invoice.cancel()

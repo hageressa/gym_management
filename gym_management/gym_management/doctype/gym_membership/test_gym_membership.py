@@ -162,3 +162,25 @@ class TestGymMembership(unittest.TestCase):
             doc.on_submit()
             db_set.assert_not_called()
             get_doc.assert_not_called()
+
+
+class TestInvoiceSettings(unittest.TestCase):
+    @patch(
+        "gym_management.gym_management.doctype.gym_membership.gym_membership.get_default_company",
+        return_value=None,
+    )
+    def test_billing_company_is_required(self, get_company):
+        membership = GymMembership({"doctype": "Gym Membership"})
+
+        with self.assertRaises(Exception):
+            membership.get_billing_company()
+
+    @patch(
+        "gym_management.gym_management.doctype.gym_membership.gym_membership.get_selling_price_list",
+        return_value=None,
+    )
+    def test_selling_price_list_is_required(self, get_list):
+        membership = GymMembership({"doctype": "Gym Membership"})
+
+        with self.assertRaises(Exception):
+            membership.get_price_list()

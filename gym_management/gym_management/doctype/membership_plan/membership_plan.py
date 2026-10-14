@@ -1,4 +1,6 @@
 import frappe
+
+from gym_management.utils import get_selling_price_list
 from frappe.model.document import Document
 
 
@@ -59,7 +61,7 @@ class MembershipPlan(Document):
         if not self.item or self.price is None:
             return
 
-        price_list = "Standard Selling"
+        price_list = get_selling_price_list()
 
         price_list_data = frappe.db.get_value(
             "Price List",
@@ -73,10 +75,7 @@ class MembershipPlan(Document):
             or not price_list_data.selling
             or not price_list_data.enabled
         ):
-            frappe.throw(
-                "An enabled selling Price List named "
-                "'Standard Selling' is required."
-            )
+            frappe.throw("An enabled selling Price List is required.")
 
         item_price_name = frappe.db.get_value(
             "Item Price",

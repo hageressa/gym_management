@@ -2,6 +2,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate, today
 
+from gym_management.utils import get_default_customer_group, get_default_territory
+
 
 class GymMember(Document):
     def validate(self):
@@ -22,8 +24,8 @@ class GymMember(Document):
             "doctype": "Customer",
             "customer_name": self.member_name,
             "customer_type": "Individual",
-            "customer_group": "Individual",
-            "territory": "Egypt",
+            "customer_group": get_default_customer_group(),
+            "territory": get_default_territory(),
         })
 
         customer.insert(ignore_permissions=True)
