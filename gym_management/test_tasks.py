@@ -5,8 +5,9 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, today
 
 from gym_management.tasks import (
-    update_expired_memberships,
     send_membership_expiry_reminders,
+    sync_freeze_statuses,
+    update_expired_memberships,
 )
 
 
@@ -110,4 +111,46 @@ class TestMembershipExpiryReminders(FrappeTestCase):
         send_membership_expiry_reminders()
 
         sendmail.assert_not_called()
+        membership.db_set.assert_not_called()
+
+
+class TestSyncFreezeStatuses(FrappeTestCase):
+    def _run_sync(self, status, freeze_from, freeze_to):
+        row = Mock()
+        row.freeze_from = freeze_from
+        row.freeze_to = freeze_to
+        membership = Mock()
+        membership.status = status
+        membership.get.return_value = [row]
+
+        with patch(
+            "gym_management.tasks.frappe.get_all", return_value=["TEST-MEMBERSHIP"]
+        ), patch("gym_management.tasks.frappe.get_doc", return_value=membership):
+            sync_freeze_statuses()
+
+        return membership
+
+    def test_freezes_active_membership_inside_freeze_period(self):
+        membership = self._run_sync(
+            "Active", add_days(today(), -1), add_days(today(), 5)
+        )
+
+        membership.db_set.assert_called_once_with(
+            "status", "Frozen", update_modified=False
+        )
+
+    def test_reactivates_membership_after_freeze_ended(self):
+        membership = self._run_sync(
+            "Frozen", add_days(today(), -10), add_days(today(), -1)
+        )
+
+        membership.db_set.assert_called_once_with(
+            "status", "Active", update_modified=False
+        )
+
+    def test_does_not_touch_status_that_is_already_correct(self):
+        membership = self._run_sync(
+            "Active", add_days(today(), -10), add_days(today(), -1)
+        )
+
         membership.db_set.assert_not_called()

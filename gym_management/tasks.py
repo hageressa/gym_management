@@ -71,3 +71,30 @@ def send_membership_expiry_reminders():
                 frappe.get_traceback(),
                 f"Membership expiry reminder failed: {membership_name}",
             )
+
+
+def sync_freeze_statuses():
+    """Keep each membership's Active/Frozen status in line with its freeze periods.
+
+    Runs daily: freezes memberships whose freeze period covers today and
+    reactivates the ones whose freeze period has ended.
+    """
+    current_date = getdate(today())
+    membership_names = frappe.get_all(
+        "Gym Membership",
+        filters={"docstatus": 1, "status": ["in", ["Active", "Frozen"]]},
+        pluck="name",
+    )
+
+    for membership_name in membership_names:
+        membership = frappe.get_doc("Gym Membership", membership_name)
+        is_frozen_today = any(
+            row.freeze_from
+            and row.freeze_to
+            and getdate(row.freeze_from) <= current_date <= getdate(row.freeze_to)
+            for row in membership.get("freeze_history") or []
+        )
+        new_status = "Frozen" if is_frozen_today else "Active"
+
+        if membership.status != new_status:
+            membership.db_set("status", new_status, update_modified=False)

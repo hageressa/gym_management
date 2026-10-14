@@ -1,4 +1,3 @@
-
 {
   "actions": [],
   "allow_rename": 1,
@@ -133,6 +132,10 @@
       "role": "Front Desk",
       "share": 1,
       "write": 1
+    },
+    {
+      "role": "Trainer",
+      "read": 1
     }
   ],
   "row_format": "Dynamic",

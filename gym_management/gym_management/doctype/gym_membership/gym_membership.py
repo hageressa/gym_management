@@ -174,7 +174,10 @@ class GymMembership(Document):
 
         self.db_set("sales_invoice", invoice.name)
         self.db_set("status", "Active")
+
     def on_cancel(self):
+        self.db_set("status", "Cancelled")
+
         if not self.sales_invoice:
             return
 

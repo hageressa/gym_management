@@ -80,6 +80,10 @@
       "read": 1,
       "write": 1,
       "create": 1
+    },
+    {
+      "role": "Trainer",
+      "read": 1
     }
   ],
   "allow_rename": 1,
