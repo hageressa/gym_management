@@ -1,7 +1,9 @@
 frappe.ui.form.on("Gym Membership", {
     setup(frm) {
+        // Gym Member has no "disabled" field; the real rule is that a
+        // blacklisted member may not be sold a membership.
         frm.set_query("member", () => ({
-            filters: { disabled: 0 }
+            filters: { status: ["!=", "Blacklisted"] }
         }));
     },
 
