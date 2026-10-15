@@ -1,10 +1,24 @@
 import frappe
 from frappe import _
+from frappe.query_builder.functions import Sum
 from frappe.utils import add_days, getdate, today
+
+SESSION_FIELDS = [
+    "name",
+    "gym_class",
+    "trainer",
+    "room",
+    "start_datetime",
+    "end_datetime",
+    "capacity",
+    "booked_count",
+    "status",
+]
 
 
 @frappe.whitelist()
 def book_class(session, member):
+    """Book a member onto a session. The controller decides Booked vs Waitlisted."""
     if not session or not member:
         frappe.throw(_("Session and member are required."))
 
@@ -27,6 +41,7 @@ def book_class(session, member):
 
 @frappe.whitelist()
 def get_available_sessions(date_from, date_to):
+    """Scheduled sessions in the date range that still have a free spot."""
     start_date = getdate(date_from)
     end_date = getdate(date_to)
 
@@ -45,32 +60,16 @@ def get_available_sessions(date_from, date_to):
                 ],
             ],
         },
-        fields=[
-            "name",
-            "gym_class",
-            "trainer",
-            "room",
-            "start_datetime",
-            "end_datetime",
-            "capacity",
-            "status",
-        ],
+        fields=SESSION_FIELDS,
         order_by="start_datetime asc",
     )
 
     available_sessions = []
 
     for session in sessions:
-        booked = frappe.db.count(
-            "Class Booking",
-            {
-                "class_session": session.name,
-                "status": ["in", ["Booked", "Attended"]],
-            },
-        )
-
-        capacity = session.capacity or 0
-        available_spots = max(capacity - booked, 0)
+        # booked_count is kept current by the Class Booking hooks, so there is
+        # no need for a count query per session here.
+        available_spots = max((session.capacity or 0) - (session.booked_count or 0), 0)
 
         if available_spots > 0:
             session["available_spots"] = available_spots
@@ -81,6 +80,7 @@ def get_available_sessions(date_from, date_to):
 
 @frappe.whitelist()
 def freeze_membership(membership_name, freeze_from, freeze_to, reason=None):
+    """Pause a submitted membership for a date range and push its end date out."""
     membership = frappe.get_doc("Gym Membership", membership_name)
     membership.check_permission("write")
 
@@ -89,7 +89,7 @@ def freeze_membership(membership_name, freeze_from, freeze_to, reason=None):
 
     days = (end - start).days + 1
 
-    # الـ Membership submitted، فبنكتب التغييرات مباشرة بدل save()
+    # The membership is submitted, so write the changes directly instead of save().
     row = membership.append(
         "freeze_history",
         {"freeze_from": start, "freeze_to": end, "days": days, "reason": reason},
@@ -110,7 +110,7 @@ def freeze_membership(membership_name, freeze_from, freeze_to, reason=None):
 
 
 def validate_freeze_period(membership, start, end):
-    """يتأكد إن الفترة صحيحة، ومتداخلتش مع فترات سابقة، ومش تعدي الحد المسموح."""
+    """Check the range is sane, does not overlap an earlier freeze, and fits the plan limit."""
     if membership.docstatus != 1 or membership.status not in ("Active", "Frozen"):
         frappe.throw(_("Only active or frozen memberships can be frozen."))
 
@@ -181,3 +181,114 @@ def renew_membership(membership_name):
         "status": new_membership.status,
         "sales_invoice": new_membership.sales_invoice,
     }
+
+
+@frappe.whitelist()
+def get_dashboard_data():
+    """Every figure the Gym Dashboard page shows, gathered in one call."""
+    today_date = getdate(today())
+    month_start = today_date.replace(day=1)
+
+    return {
+        "active_members": count_active_members(),
+        "expiring_soon": count_memberships_expiring_within(today_date, 7),
+        "today_sessions": get_sessions_on(today_date),
+        "revenue_this_month": get_membership_revenue_since(month_start),
+        "currency": frappe.defaults.get_global_default("currency"),
+    }
+
+
+def count_active_members():
+    """How many distinct members hold a submitted, Active membership.
+
+    Our own rule allows only one active membership per member, but counting
+    distinct members keeps the figure right even if the data drifts.
+    """
+    members = frappe.get_all(
+        "Gym Membership",
+        filters={"docstatus": 1, "status": "Active"},
+        pluck="member",
+    )
+    return len(set(members))
+
+
+def count_memberships_expiring_within(from_date, days):
+    return frappe.db.count(
+        "Gym Membership",
+        {
+            "docstatus": 1,
+            "status": "Active",
+            "end_date": ["between", [from_date, add_days(from_date, days)]],
+        },
+    )
+
+
+def get_sessions_on(on_date):
+    """Sessions starting on ``on_date``, with their fill rate and display names."""
+    sessions = frappe.get_all(
+        "Class Session",
+        filters={
+            "start_datetime": [
+                "between",
+                [f"{on_date} 00:00:00", f"{on_date} 23:59:59"],
+            ]
+        },
+        fields=SESSION_FIELDS,
+        order_by="start_datetime asc",
+    )
+
+    if not sessions:
+        return []
+
+    # Two lookups for the whole page rather than one per session.
+    class_names = get_titles(
+        "Gym Class", {s.gym_class for s in sessions if s.gym_class}, "class_name"
+    )
+    trainer_names = get_titles(
+        "Gym Trainer", {s.trainer for s in sessions if s.trainer}, "trainer_name"
+    )
+
+    for session in sessions:
+        session["class_name"] = class_names.get(session.gym_class)
+        session["trainer_name"] = trainer_names.get(session.trainer)
+        session["fill_rate"] = (
+            round((session.booked_count or 0) * 100 / session.capacity)
+            if session.capacity
+            else 0
+        )
+
+    return sessions
+
+
+def get_titles(doctype, names, title_field):
+    """Map of name -> title for the given records, in a single query."""
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        doctype,
+        filters={"name": ["in", list(names)]},
+        fields=["name", title_field],
+        as_list=True,
+    )
+    return dict(rows)
+
+
+def get_membership_revenue_since(from_date):
+    """Total value of submitted membership invoices posted on or after ``from_date``.
+
+    The join runs in SQL, so the invoice table never comes into Python.
+    """
+    membership = frappe.qb.DocType("Gym Membership")
+    invoice = frappe.qb.DocType("Sales Invoice")
+
+    result = (
+        frappe.qb.from_(invoice)
+        .join(membership)
+        .on(membership.sales_invoice == invoice.name)
+        .select(Sum(invoice.grand_total))
+        .where(invoice.docstatus == 1)
+        .where(invoice.posting_date >= from_date)
+    ).run()
+
+    return (result[0][0] if result else 0) or 0
