@@ -45,8 +45,14 @@ class ClassSession(Document):
         return combine_date_time(self.session_date, self.end_time)
 
     def set_end_time(self):
-        """Fill end_time from the class duration, leaving an explicit value alone."""
-        if self.end_time or not self.session_date or not self.start_time or not self.gym_class:
+        """Derive end_time from the class duration, always.
+
+        Frappe fills an empty Time field with the current time when a document
+        is created, so "only compute when blank" would silently keep that
+        value. The end of a session follows from its class, so it is computed
+        every save and the field is read-only on the form.
+        """
+        if not self.session_date or not self.start_time or not self.gym_class:
             return
 
         duration = frappe.db.get_value("Gym Class", self.gym_class, "duration_minutes") or 60

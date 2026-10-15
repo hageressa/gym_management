@@ -55,7 +55,8 @@
       "label": "End Time",
       "fieldtype": "Time",
       "fieldname": "end_time",
-      "description": "Computed from the class duration when left empty."
+      "description": "Computed from the class duration.",
+      "read_only": 1
     },
     {
       "label": "Capacity",

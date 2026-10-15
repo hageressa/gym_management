@@ -35,13 +35,14 @@ class TestClassSessionTiming(unittest.TestCase):
         self.assertEqual(session.end_time, "10:45:00")
 
     @patch(f"{MODULE}.frappe.db.get_value", return_value=45)
-    def test_an_explicit_end_time_is_left_alone(self, get_value):
-        session = make_session(gym_class="CLASS-0001", end_time="12:00:00")
+    def test_an_end_time_already_on_the_document_is_recomputed(self, get_value):
+        """Frappe seeds an empty Time field with the current time, so a value
+        sitting there is not an instruction to keep it."""
+        session = make_session(gym_class="CLASS-0001", end_time="00:27:15")
 
         session.set_end_time()
 
-        self.assertEqual(session.end_time, "12:00:00")
-        get_value.assert_not_called()
+        self.assertEqual(session.end_time, "10:45:00")
 
     @patch(f"{MODULE}.frappe.throw", side_effect=Exception("invalid range"))
     def test_rejects_end_before_start(self, throw):
