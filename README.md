@@ -52,6 +52,17 @@ A full pass: open a **Gym Member** → create a **Gym Membership** on a plan →
 **Class Session** → check them in from the front-desk page. Use **Actions → Freeze** on the
 membership to pause it, then try the check-in again to see it refused.
 
+## Screenshots
+
+| | |
+|---|---|
+| Membership purchased, invoice raised | `docs/screenshots/01-membership-purchase.png` |
+| Third booking on a session of two goes to the waitlist | `docs/screenshots/02-class-booking-waitlist.png` |
+| Check-in refused for a frozen membership | `docs/screenshots/03-check-in-blocked.png` |
+| Manager dashboard | `docs/screenshots/04-dashboard.png` |
+| Timetable as a calendar | `docs/screenshots/05-session-calendar.png` |
+| A freeze extending the end date | `docs/screenshots/06-membership-frozen.png` |
+
 ## Roles
 
 Shipped as fixtures, so they exist after install:
