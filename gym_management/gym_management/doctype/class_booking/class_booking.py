@@ -1,12 +1,14 @@
-
-
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, now_datetime
+
+from gym_management.utils import get_valid_membership
 
 
 class ClassBooking(Document):
     def on_update(self):
+        """Promote the first valid waitlisted booking when a confirmed one is cancelled early."""
         previous = self.get_doc_before_save()
 
         if not previous or previous.status == "Cancelled":
@@ -44,54 +46,10 @@ class ClassBooking(Document):
             order_by="waitlist_position asc",
         )
 
-        session_date = (
-            getdate(session.start_datetime)
-            if session.start_datetime
-            else getdate()
-        )
+        session_date = getdate(session.start_datetime) if session.start_datetime else getdate()
 
         for row in waitlisted:
-            memberships = frappe.get_all(
-                "Gym Membership",
-                filters={
-                    "member": row.member,
-                    "docstatus": 1,
-                    "status": "Active",
-                },
-                fields=["name", "start_date", "end_date"],
-            )
-
-            has_valid_membership = False
-            for membership_row in memberships:
-                if (
-                    membership_row.start_date
-                    and getdate(membership_row.start_date) > session_date
-                ):
-                    continue
-
-                if (
-                    membership_row.end_date
-                    and getdate(membership_row.end_date) < session_date
-                ):
-                    continue
-
-                membership_doc = frappe.get_doc(
-                    "Gym Membership", membership_row.name
-                )
-                is_frozen = any(
-                    freeze.freeze_from
-                    and freeze.freeze_to
-                    and getdate(freeze.freeze_from)
-                    <= session_date
-                    <= getdate(freeze.freeze_to)
-                    for freeze in (membership_doc.get("freeze_history") or [])
-                )
-
-                if not is_frozen:
-                    has_valid_membership = True
-                    break
-
-            if not has_valid_membership:
+            if not get_valid_membership(row.member, session_date):
                 continue
 
             booking = frappe.get_doc("Class Booking", row.name)
@@ -147,72 +105,26 @@ class ClassBooking(Document):
 
     def validate_session(self):
         if not self.class_session:
-            frappe.throw("Please select a Class Session.")
+            frappe.throw(_("Please select a Class Session."))
 
         session = frappe.get_doc("Class Session", self.class_session)
 
         if session.status != "Scheduled":
-            frappe.throw("Bookings are allowed only for scheduled sessions.")
+            frappe.throw(_("Bookings are allowed only for scheduled sessions."))
 
         if session.start_datetime and session.start_datetime < now_datetime():
-            frappe.throw("Cannot book a session that has already started.")
+            frappe.throw(_("Cannot book a session that has already started."))
 
     def validate_membership(self):
         if not self.member:
-            frappe.throw("Please select a Gym Member.")
-
-        memberships = frappe.get_all(
-            "Gym Membership",
-            filters={
-                "member": self.member,
-                "docstatus": 1,
-                "status": "Active",
-            },
-            fields=["name", "start_date", "end_date"],
-        )
+            frappe.throw(_("Please select a Gym Member."))
 
         session = frappe.get_doc("Class Session", self.class_session)
         if not session.start_datetime:
-            frappe.throw("The class session must have a start datetime.")
+            frappe.throw(_("The class session must have a start datetime."))
 
-        session_date = getdate(session.start_datetime)
-
-        for membership_row in memberships:
-            if (
-                membership_row.start_date
-                and getdate(membership_row.start_date) > session_date
-            ):
-                continue
-
-            if (
-                membership_row.end_date
-                and getdate(membership_row.end_date) < session_date
-            ):
-                continue
-
-            membership = frappe.get_doc(
-                "Gym Membership", membership_row.name
-            )
-            frozen = any(
-                row.freeze_from
-                and row.freeze_to
-                and getdate(row.freeze_from) <= session_date
-                <= getdate(row.freeze_to)
-                for row in (membership.get("freeze_history") or [])
-            )
-
-            if frozen:
-                continue
-
-            return
-
-        if memberships:
-            frappe.throw(
-                "The member has no valid membership for this session date, "
-                "or the membership is frozen."
-            )
-
-        frappe.throw("The member does not have a valid active membership.")
+        if not get_valid_membership(self.member, getdate(session.start_datetime)):
+            frappe.throw(_("The member does not have a valid membership for this session date."))
 
     def validate_duplicate_booking(self):
         if not self.member or not self.class_session:
@@ -228,14 +140,14 @@ class ClassBooking(Document):
             filters["name"] = ["!=", self.name]
 
         if frappe.db.exists("Class Booking", filters):
-            frappe.throw("This member already has a booking for this session.")
+            frappe.throw(_("This member already has a booking for this session."))
 
     def validate_capacity(self):
         if not self.class_session:
             return
 
         # Lock the session row so concurrent booking transactions serialize
-# their capacity checks. The lock is held until the transaction ends.
+        # their capacity checks. The lock is held until the transaction ends.
         frappe.db.get_value(
             "Class Session",
             self.class_session,
@@ -245,7 +157,7 @@ class ClassBooking(Document):
         session = frappe.get_doc("Class Session", self.class_session)
 
         if not session.capacity or session.capacity < 1:
-            frappe.throw("Set a valid capacity on the Class Session.")
+            frappe.throw(_("Set a valid capacity on the Class Session."))
 
         if self.status == "Cancelled":
             self.waitlist_position = None
@@ -268,9 +180,7 @@ class ClassBooking(Document):
         if confirmed_count >= session.capacity:
             settings = frappe.get_single("Gym Settings")
             if not settings.enable_waitlist:
-                frappe.throw(
-                    "This class session is full and the waitlist is disabled."
-                )
+                frappe.throw(_("This class session is full and the waitlist is disabled."))
             self.status = "Waitlisted"
 
         if self.status == "Waitlisted":

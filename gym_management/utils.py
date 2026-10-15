@@ -1,6 +1,7 @@
 """Shared helpers for the gym_management app."""
 
 import frappe
+from frappe import _
 from frappe.utils import getdate
 
 
@@ -19,17 +20,12 @@ def get_selling_price_list():
 
 
 def get_default_territory():
-    return (
-        frappe.db.get_single_value("Selling Settings", "territory")
-        or "All Territories"
-    )
+    return frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
 
 
 def get_default_customer_group():
     """Return a valid non-group Customer Group."""
-    customer_group = frappe.db.get_single_value(
-        "Selling Settings", "customer_group"
-    )
+    customer_group = frappe.db.get_single_value("Selling Settings", "customer_group")
 
     if customer_group and not frappe.db.get_value(
         "Customer Group",
@@ -47,7 +43,7 @@ def get_default_customer_group():
 
     if not customer_group:
         frappe.throw(
-            "Create at least one non-group Customer Group before adding a Gym Member."
+            _("Create at least one non-group Customer Group before adding a Gym Member.")
         )
 
     return customer_group
@@ -64,21 +60,44 @@ def is_frozen_on(membership, on_date):
     )
 
 
-def get_valid_membership(member, on_date):
-    """Return the name of the member's submitted, Active, non-frozen membership
-    that covers ``on_date``, or None."""
+def get_membership_block_reason(membership, on_date):
+    """Why this membership cannot be used on ``on_date``, or None if it is usable.
+
+    This is the one place that decides whether a membership is usable. Bookings,
+    waitlist promotion and check-ins all call it.
+    """
     on_date = getdate(on_date)
+
+    if membership.status == "Cancelled":
+        return _("membership is cancelled")
+
+    if membership.status == "Expired" or (
+        membership.end_date and getdate(membership.end_date) < on_date
+    ):
+        return _("membership has expired")
+
+    if membership.start_date and getdate(membership.start_date) > on_date:
+        return _("membership has not started yet")
+
+    # The stored status can lag behind the freeze dates, so check both.
+    if membership.status == "Frozen" or is_frozen_on(membership, on_date):
+        return _("membership is frozen today")
+
+    if membership.status != "Active":
+        return _("membership is not active")
+
+    return None
+
+
+def get_valid_membership(member, on_date):
+    """Name of the member's first usable submitted membership on ``on_date``, or None."""
     rows = frappe.get_all(
         "Gym Membership",
         filters={"member": member, "docstatus": 1, "status": "Active"},
-        fields=["name", "start_date", "end_date"],
+        fields=["name"],
     )
     for row in rows:
-        if row.start_date and getdate(row.start_date) > on_date:
-            continue
-        if row.end_date and getdate(row.end_date) < on_date:
-            continue
         membership = frappe.get_doc("Gym Membership", row.name)
-        if not is_frozen_on(membership, on_date):
+        if get_membership_block_reason(membership, on_date) is None:
             return row.name
     return None

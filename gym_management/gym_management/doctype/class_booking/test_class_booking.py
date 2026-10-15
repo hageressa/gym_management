@@ -137,7 +137,10 @@ class TestClassBooking(unittest.TestCase):
         )
 
         membership_doc = SimpleNamespace(
-            get=lambda fieldname: [] if fieldname == "freeze_history" else None
+            status="Active",
+            start_date=None,
+            end_date=None,
+            get=lambda fieldname: [] if fieldname == "freeze_history" else None,
         )
 
         def get_doc_side_effect(doctype, name=None):
@@ -210,15 +213,21 @@ class TestClassBooking(unittest.TestCase):
         )
 
         frozen_membership = SimpleNamespace(
+            status="Active",
+            start_date=None,
+            end_date=None,
             get=lambda fieldname: [
                 SimpleNamespace(
                     freeze_from="2026-10-10",
                     freeze_to="2026-10-15",
                 )
-            ] if fieldname == "freeze_history" else None
+            ] if fieldname == "freeze_history" else None,
         )
         valid_membership = SimpleNamespace(
-            get=lambda fieldname: [] if fieldname == "freeze_history" else None
+            status="Active",
+            start_date=None,
+            end_date=None,
+            get=lambda fieldname: [] if fieldname == "freeze_history" else None,
         )
 
         def get_doc_side_effect(doctype, name=None):
