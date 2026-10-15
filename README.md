@@ -1,92 +1,151 @@
-# Gym Management System
+# gym_management
 
-A gym management application built with the Frappe Framework and ERPNext.
-The application manages gym memberships, membership plans, class sessions,
-class bookings, and member check-ins.
+A Frappe app that runs a gym on top of a standard ERPNext site: members, membership plans,
+a class timetable, bookings with a waitlist, front-desk check-in, and freezes — with the
+billing handled by ERPNext's own Customer, Item and Sales Invoice records rather than
+reimplemented.
 
-## Requirements
+- Frappe v15, ERPNext v15, Python 3.10+
 
-- Frappe Framework v15
-- ERPNext v15
-- A working Bench environment
+## Install
 
-## Installation
-
-From your Frappe Bench directory, run:
+From your bench directory:
 
 ```bash
+# 1. the app
 bench get-app https://github.com/hageressa/gym_management.git --branch develop
+
+# 2. a site with ERPNext on it
+bench new-site gym.localhost --install-app erpnext
+
+# 3. this app
 bench --site gym.localhost install-app gym_management
+bench --site gym.localhost migrate
 ```
 
-Replace `gym.localhost` with your own site name if necessary.
+Open `http://gym.localhost:8000` and finish the ERPNext setup wizard. **A company must
+exist with a default receivable account, income account and cost center**, otherwise
+submitting a membership cannot raise its Sales Invoice and will tell you which setting is
+missing.
 
-If the app is already available in `apps/gym_management`, skip `bench get-app`.
+Then load the sample data:
 
-## Main Features
+```bash
+bench --site gym.localhost execute gym_management.seed.run
+```
 
-- Membership plans with duration, price, and class-pack configuration.
-- Gym membership status management, including active, frozen, expired,
-  and cancelled states where supported by the membership workflow.
-- Membership freeze history and freeze-status synchronization.
-- Class sessions and class booking validation.
-- Gym check-in records and related validation.
-- Scheduled tasks for updating expired memberships, synchronizing freeze
-  statuses, and sending membership-expiry reminders.
+That creates an item group, three plans, two trainers with specialties, two rooms, two
+classes and three members, plus upcoming sessions. It is safe to run again — every record is
+looked up before it is created. One class ("HIIT Express") has a capacity of 2 so the
+waitlist is easy to demonstrate.
 
-The exact features available depend on the DocTypes, permissions, and
-workflows configured in the installed version.
+## Try it
 
-## Scheduled Tasks
+| What | Where |
+|---|---|
+| Manager dashboard | `/app/gym-dashboard` |
+| Front-desk check-in | `/app/gym-checkin` |
+| Timetable as a calendar | Class Session list → Calendar view |
 
-The app registers daily tasks for:
+A full pass: open a **Gym Member** → create a **Gym Membership** on a plan → **Submit** it
+(a Sales Invoice is created and the status becomes Active) → book that member onto a
+**Class Session** → check them in from the front-desk page. Use **Actions → Freeze** on the
+membership to pause it, then try the check-in again to see it refused.
 
-- Synchronizing membership freeze statuses.
-- Updating expired memberships.
-- Sending membership-expiry reminders when enabled in Gym Settings.
+## Roles
 
-Scheduled execution depends on the site's scheduler being enabled and running.
+Shipped as fixtures, so they exist after install:
 
-## Running Tests
+- **Gym Manager** — everything, including submitting and cancelling memberships.
+- **Front Desk** — members, memberships, bookings and check-ins.
+- **Trainer** — reads the timetable and marks attendance on bookings.
 
-Run the full test suite for this app:
+## Scheduled jobs
+
+Registered as daily tasks in `hooks.py`:
+
+- `tasks.sync_freeze_statuses` — moves memberships between Active and Frozen as freeze
+  periods start and end.
+- `tasks.update_expired_memberships` — marks memberships Expired past their end date.
+- `tasks.send_membership_expiry_reminders` — emails members whose membership expires within
+  `Gym Settings.expiry_reminder_days`, once each.
+
+These need the site scheduler to be running (`bench --site gym.localhost enable-scheduler`).
+To check one by hand:
+
+```bash
+bench --site gym.localhost execute gym_management.tasks.update_expired_memberships
+```
+
+## Whitelisted API
+
+In `gym_management/api.py`:
+
+| Method | Does |
+|---|---|
+| `book_class(session, member)` | Books a member; the controller decides Booked vs Waitlisted |
+| `get_available_sessions(date_from, date_to)` | Scheduled sessions in a range that still have room |
+| `freeze_membership(membership_name, freeze_from, freeze_to, reason)` | Adds a freeze period and pushes the end date out |
+| `renew_membership(membership_name)` | Submits a replacement membership for an expired one |
+| `get_dashboard_data()` | Every figure on the dashboard, in one call |
+| `find_members(search_text)` | Front-desk lookup by name, phone, email or id |
+| `get_check_in_status(member)` | Whether the member may enter today, and why not |
+| `check_in_member(member, method)` | Records the check-in |
+
+## Tests
 
 ```bash
 bench --site gym.localhost run-tests --app gym_management
 ```
 
-Run the task tests only:
+88 tests. A single module:
 
 ```bash
 bench --site gym.localhost run-tests \
-  --app gym_management \
-  --module gym_management.test_tasks
+  --module gym_management.gym_management.doctype.class_booking.test_class_booking
 ```
 
-Replace `gym.localhost` with your site name if necessary.
+Most are unit tests with the database mocked, so they are fast and do not need seed data.
+`test_freeze_integration.py` is the exception: it creates a real plan, member and submitted
+membership and freezes it, to prove the freeze writes correctly to a document that is
+already submitted.
+
+If `run-tests` refuses to start, the site needs developer mode:
+
+```bash
+bench --site gym.localhost set-config developer_mode 1
+bench --site gym.localhost set-config allow_tests true
+```
+
+## Assumptions
+
+- **One active membership per member**, enforced in `before_submit`. Renewal starts the day
+  after the old term ends.
+- **A session runs inside one day.** Overlap checks compare times within the same
+  `session_date`, which is why a session cannot cross midnight.
+- **A frozen membership blocks entry**, as the brief asks. The daily job flips the status
+  back to Active when the freeze ends; check-in also reads the freeze dates directly, so a
+  member is never refused on a stale status.
+- **A class pack is charged when the class is booked**, not when it is attended, and the
+  class is returned if the booking is cancelled. Charging on attendance would let a member
+  book more classes than they had paid for.
+- **Invoices are not created twice.** `on_submit` returns early if a Sales Invoice is
+  already linked, so retrying a failed submit cannot double-charge.
+- The **currency, price list and company** come from the site's own defaults rather than
+  being hard-coded, so the app works on a site set up for any country.
 
 ## Development
-
-The app uses the Frappe Framework development workflow. After changing
-DocTypes or their metadata, migrate or reload the relevant DocTypes as
-appropriate for the change.
-
-The repository uses pre-commit for code formatting and linting.
-
-Install the hooks with:
 
 ```bash
 cd apps/gym_management
 pre-commit install
 ```
 
-Configured tools include Ruff, ESLint, Prettier, and pyupgrade.
+Ruff, ESLint, Prettier and pyupgrade run on commit. Settings are in `pyproject.toml` and
+`.pre-commit-config.yaml`.
 
-## Contributing
+Design decisions and the research answers are in [DECISIONS.md](DECISIONS.md).
 
-Contributions and bug reports are welcome. Please test changes before
-submitting a pull request.
-
-## License
+## Licence
 
 MIT

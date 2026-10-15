@@ -1,30 +1,131 @@
-# Gym Management System — Design Decisions
+# Design Decisions — gym_management
 
-## R1. Custom Membership vs ERPNext Subscription
+## R1. ERPNext `Subscription` or custom renewal logic?
 
-The current implementation uses a custom Gym Membership DocType linked to ERPNext Customer, Item, and Sales Invoice records. This keeps gym-specific states such as Frozen, Expired, and Cancelled, class entitlements, and freeze history in one place while reusing ERPNext invoicing.
+**Chose:** a custom `Gym Membership` submittable DocType, with ERPNext reused for everything financial.
 
-ERPNext Subscription is a stronger option when automated recurring billing, billing intervals, and subscription lifecycle management are central requirements. It introduces additional configuration and synchronization between the subscription and gym-specific membership state. For this assessment, the custom membership is the simpler fit. The existing subscription link can support a future integration if recurring billing becomes a requirement.
+`Subscription` exists to raise invoices on a repeating schedule. A gym membership is a
+single fixed-term purchase that the front desk may pause mid-term, and pausing has to push
+the end date out by the number of frozen days. `Subscription` has no concept of a paused
+period: a freeze would mean editing `current_invoice_start` / `current_invoice_end` behind
+its back, and its own scheduler would keep raising invoices for a member who is not
+training. The states the business actually asks for — `Draft / Active / Frozen / Expired /
+Cancelled` — do not map onto it either.
 
-## R2. Trainer Data Model
+So the membership lifecycle is ours, and the money is ERPNext's:
 
-Gym Trainer links to the standard ERPNext Employee DocType rather than duplicating employee identity and HR information. Gym-specific details, such as specialties and trainer availability, belong in Gym Trainer. This reuses employee records and avoids maintaining two sources of truth for the same person.
+| Concern | Where it lives |
+|---|---|
+| Billing identity | `Customer`, created on first save of a `Gym Member` |
+| What was sold | A non-stock `Item` per `Membership Plan`, with `Item Price` kept in sync |
+| The charge | A `Sales Invoice` created in `Gym Membership.on_submit` |
+| Membership state, freezes, class balance | `Gym Membership` |
 
-## R3. Pro-rated Refunds
+**Trade-off:** no automatic recurring billing. Renewal is explicit, through
+`api.renew_membership`, which starts the new term the day after the old one ends. The
+`subscription` link and `auto_renew` fields are on the DocType so a `Subscription` can be
+attached later for members who want card-on-file billing, without reshaping the data model.
 
-A cancellation refund should be calculated from the unused membership period or unused class entitlement, according to a documented gym policy. The system should create a credit note against the original Sales Invoice, using ERPNext accounting workflows, rather than deleting or editing submitted accounting records. The refund policy, taxes, and approval rules must be confirmed with the business before implementation.
+## R2. How trainers are modelled
 
-## R4. Concurrency and the Last Available Spot
+**Chose:** a separate `Gym Trainer` DocType with an optional 1:1 link to `Employee`.
 
-Checking capacity before inserting a booking is not sufficient when two requests arrive simultaneously. The current implementation acquires a row lock for the Class Session before checking capacity. This is a first step toward serialization, but the complete transaction behavior and freshness of the booking count still require dedicated concurrent-request tests before claiming that last-slot races are prevented. The booking must be inserted in the same transaction. If capacity is exhausted, the request should enter the waitlist only when waitlisting is enabled; otherwise it should fail with a clear message.
+Custom fields on `Employee` were the alternative. They were rejected for two reasons. First,
+`Employee` belongs to HR; a gym running this app without the HR module would still have to
+carry it, and scheduling data would end up inside an HR master. Second, the fields a gym
+needs — specialties, bio, whether the trainer is currently taking classes — are about the
+timetable, not about employment.
 
-## R5. References and Verification
+`Gym Trainer` therefore holds `specialties` (a Table MultiSelect over a `Gym Specialty`
+master, so the same specialty is spelled the same way everywhere), `bio` and `is_active`,
+and links to `Employee` when HR data exists. The link is **not** mandatory, so the app
+installs and seeds on a site with no employees.
 
-Implementation decisions should be checked against the official Frappe Framework and ERPNext documentation, the installed application source, and relevant Frappe forum discussions.
+**Trade-off:** two records per person. Accepted, because the alternative couples class
+scheduling to payroll.
 
-- Frappe Framework documentation: https://docs.frappe.io/framework
-- ERPNext documentation: https://docs.frappe.io/erpnext
-- Frappe Framework source: https://github.com/frappe/frappe
-- ERPNext source: https://github.com/frappe/erpnext
+## R3. Pro-rated refunds on mid-term cancellation (design only)
 
-Before delivery, verify each decision against the final code and record any additional sources actually consulted. This document describes design rationale; it does not claim that unimplemented features, such as pro-rated refunds or transaction-safe capacity locking, are already available.
+Not implemented. The design:
+
+1. **Value the unused part.** For `Days` / `Months` plans, `price × remaining_days /
+   chargeable_days`, where `remaining_days` counts from the cancellation date to `end_date`
+   and `chargeable_days` excludes days already spent frozen — a frozen day was not consumed,
+   so the member should not be refunded for it twice. For a `Class Pack`,
+   `price × classes_remaining / classes_included`.
+2. **Issue a Credit Note, do not cancel the invoice.** A `Sales Invoice` with `is_return = 1`
+   and `return_against` set to the original. Cancelling a submitted invoice erases revenue
+   that was really earned for the period the member did train, and breaks the audit trail.
+   Note that `Gym Membership.on_cancel` today *does* cancel the invoice — that path is for
+   correcting a mistaken sale, not for a refund, and a refund flow would have to branch here.
+3. **Pay it back** with a `Payment Entry` against the credit note.
+
+**Needs a business answer before building:** whether a cancellation fee applies, whether
+freeze days are refundable at all, and the tax treatment of a partial refund.
+
+## R4. Two people booking the last spot
+
+`ClassBooking.validate_capacity` takes a row lock on the session before it counts:
+
+```python
+frappe.db.get_value("Class Session", self.class_session, "name", for_update=True)
+```
+
+Frappe serves each request inside one transaction and commits at the end, so the second
+request blocks on that row until the first has committed its booking, and then counts it.
+The count is taken from `Class Booking` rows, not from the cached `booked_count` field —
+`booked_count` is maintained by hooks for display and would be stale under a race.
+
+**What is not proven.** There is no automated concurrency test. The unit tests mock the
+database, so they exercise the ordering of the checks, not the locking. Proving this needs
+two real parallel requests against a running site.
+
+**What I would add next**, in order:
+
+1. A test that opens two connections in separate threads, books the same last spot, and
+   asserts exactly one `Booked` and one `Waitlisted` (or one failure).
+2. A database-level backstop: a unique index on `(class_session, member)` for non-cancelled
+   bookings. Duplicate booking is enforced in `validate_duplicate_booking` today, which is
+   application-level only.
+3. Load testing to confirm the lock does not serialise the whole booking endpoint under
+   normal traffic.
+
+## R5. Sources consulted
+
+- [DocType controllers](https://docs.frappe.io/framework/user/en/basics/doctypes/controllers)
+  and [the controller lifecycle](https://docs.frappe.io/framework-git/doctypes/controllers-lifecycle)
+  — which hook fires when, and why the "one active membership" check belongs in
+  `before_submit` rather than `on_submit`.
+- [Hooks](https://docs.frappe.io/framework-git/server-side/hooks) — `doc_events`,
+  `scheduler_events` and `fixtures` for the three roles.
+- [Database API](https://docs.frappe.io/framework/user/en/api/database) — `db_set`,
+  `db_insert` and `for_update`, which is how a submitted document is changed without
+  calling `save()`.
+- [Background jobs and the scheduler](https://docs.frappe.io/framework/user/en/api/background_jobs)
+  — daily job registration and why the job must not call `frappe.db.commit()` itself.
+- [Forum: using `for update` in Frappe queries](https://discuss.frappe.io/t/how-we-can-use-for-update-clause-in-frappe-get-all/55444)
+  — confirmed `for_update=True` on `frappe.db.get_value` as the supported way to take the lock.
+- `frappe/model/document.py` and `frappe/model/utils/rename_field.py` in
+  [the Frappe source](https://github.com/frappe/frappe) — behaviour of `db_set` on submitted
+  documents, and the rename used by the field-alignment patch.
+- `erpnext/accounts/doctype/sales_invoice/sales_invoice.py` and
+  `erpnext/accounts/doctype/subscription/subscription.py` in
+  [the ERPNext source](https://github.com/frappe/erpnext) — the fields a Sales Invoice needs
+  to submit, and what `Subscription` actually does on its schedule (R1).
+
+## Deviations from the brief
+
+None in the field definitions: `Class Session` stores `session_date` / `start_time` /
+`end_time`, `Gym Class` exposes `default_trainer` / `default_room` / `default_capacity`, and
+`Gym Room` and `Gym Trainer` use `is_active`, as specified. Two notes on how that was met:
+
+- **The calendar view** needs a single start and end datetime, which the split fields do not
+  provide directly. `api.get_session_calendar_events` combines the date and the two times
+  server-side and the calendar config points at it, rather than storing a redundant datetime.
+- **Existing data** is carried across by
+  `gym_management/patches/v1_0/align_fields_with_task_spec.py`, which splits the old
+  datetimes, converts the old `status` selects to `is_active`, and turns the old free-text
+  `specialization` into linked `Gym Specialty` rows.
+
+A `Gym Member` is named `MEM-####` rather than by a hash, and the member link field searches
+`member_name`, `phone` and `email`, so the front desk can find somebody by what they know.
