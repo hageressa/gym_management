@@ -9,8 +9,9 @@
     "gym_class",
     "trainer",
     "room",
-    "start_datetime",
-    "end_datetime",
+    "session_date",
+    "start_time",
+    "end_time",
     "capacity",
     "booked_count",
     "status"
@@ -21,7 +22,8 @@
       "fieldtype": "Link",
       "fieldname": "gym_class",
       "options": "Gym Class",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "label": "Trainer",
@@ -36,16 +38,24 @@
       "options": "Gym Room"
     },
     {
-      "label": "Start Datetime",
-      "fieldtype": "Datetime",
-      "fieldname": "start_datetime",
-      "reqd": 1
+      "label": "Session Date",
+      "fieldtype": "Date",
+      "fieldname": "session_date",
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
-      "label": "End Datetime",
-      "fieldtype": "Datetime",
-      "fieldname": "end_datetime",
-      "reqd": 1
+      "label": "Start Time",
+      "fieldtype": "Time",
+      "fieldname": "start_time",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "label": "End Time",
+      "fieldtype": "Time",
+      "fieldname": "end_time",
+      "description": "Computed from the class duration when left empty."
     },
     {
       "label": "Capacity",
@@ -54,19 +64,19 @@
       "reqd": 1
     },
     {
-      "label": "Status",
-      "fieldtype": "Select",
-      "fieldname": "status",
-      "options": "Scheduled\nCompleted\nCancelled",
-      "default": "Scheduled"
-    },
-    {
       "fieldname": "booked_count",
       "fieldtype": "Int",
       "label": "Booked Count",
       "read_only": 1,
       "default": "0",
       "no_copy": 1
+    },
+    {
+      "label": "Status",
+      "fieldtype": "Select",
+      "fieldname": "status",
+      "options": "Scheduled\nCompleted\nCancelled",
+      "default": "Scheduled"
     }
   ],
   "permissions": [
@@ -96,6 +106,6 @@
     }
   ],
   "allow_rename": 1,
-  "sort_field": "modified",
+  "sort_field": "session_date",
   "sort_order": "DESC"
 }

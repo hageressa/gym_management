@@ -124,7 +124,7 @@ class GymDashboard {
 
 			const row = $(`
 				<tr style="cursor: pointer">
-					<td>${frappe.datetime.str_to_user(session.start_datetime)}</td>
+					<td>${frappe.utils.escape_html(String(session.start_time || "").slice(0, 5))}</td>
 					<td>${frappe.utils.escape_html(session.class_name || session.gym_class || "")}</td>
 					<td>${frappe.utils.escape_html(session.trainer_name || session.trainer || "")}</td>
 					<td>${session.booked_count || 0} / ${session.capacity || 0}</td>

@@ -3,7 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, now_datetime
 
-from gym_management.utils import get_valid_membership
+from gym_management.utils import combine_date_time, get_valid_membership
 
 
 class ClassBooking(Document):
@@ -22,8 +22,9 @@ class ClassBooking(Document):
         if session.status != "Scheduled":
             return
 
-        if session.start_datetime and session.start_datetime <= now_datetime():
-            return
+        if session.session_date and session.start_time:
+            if combine_date_time(session.session_date, session.start_time) <= now_datetime():
+                return
 
         confirmed_count = frappe.db.count(
             "Class Booking",
@@ -46,7 +47,7 @@ class ClassBooking(Document):
             order_by="waitlist_position asc",
         )
 
-        session_date = getdate(session.start_datetime) if session.start_datetime else getdate()
+        session_date = getdate(session.session_date) if session.session_date else getdate()
 
         for row in waitlisted:
             if not get_valid_membership(row.member, session_date):
@@ -112,18 +113,19 @@ class ClassBooking(Document):
         if session.status != "Scheduled":
             frappe.throw(_("Bookings are allowed only for scheduled sessions."))
 
-        if session.start_datetime and session.start_datetime < now_datetime():
-            frappe.throw(_("Cannot book a session that has already started."))
+        if session.session_date and session.start_time:
+            if combine_date_time(session.session_date, session.start_time) < now_datetime():
+                frappe.throw(_("Cannot book a session that has already started."))
 
     def validate_membership(self):
         if not self.member:
             frappe.throw(_("Please select a Gym Member."))
 
         session = frappe.get_doc("Class Session", self.class_session)
-        if not session.start_datetime:
-            frappe.throw(_("The class session must have a start datetime."))
+        if not session.session_date:
+            frappe.throw(_("The class session must have a session date."))
 
-        if not get_valid_membership(self.member, getdate(session.start_datetime)):
+        if not get_valid_membership(self.member, getdate(session.session_date)):
             frappe.throw(_("The member does not have a valid membership for this session date."))
 
     def validate_duplicate_booking(self):

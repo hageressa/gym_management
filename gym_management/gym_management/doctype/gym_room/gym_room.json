@@ -9,7 +9,7 @@
     "room_name",
     "capacity",
     "location",
-    "status"
+    "is_active"
   ],
   "fields": [
     {
@@ -30,11 +30,10 @@
       "fieldname": "location"
     },
     {
-      "label": "Status",
-      "fieldtype": "Select",
-      "fieldname": "status",
-      "options": "Available\nMaintenance\nInactive",
-      "default": "Available"
+      "label": "Is Active",
+      "fieldtype": "Check",
+      "fieldname": "is_active",
+      "default": "1"
     }
   ],
   "permissions": [

@@ -3,15 +3,20 @@ from frappe import _
 from frappe.query_builder.functions import Sum
 from frappe.utils import add_days, getdate, today
 
-from gym_management.utils import get_latest_membership, get_membership_block_reason
+from gym_management.utils import (
+    combine_date_time,
+    get_latest_membership,
+    get_membership_block_reason,
+)
 
 SESSION_FIELDS = [
     "name",
     "gym_class",
     "trainer",
     "room",
-    "start_datetime",
-    "end_datetime",
+    "session_date",
+    "start_time",
+    "end_time",
     "capacity",
     "booked_count",
     "status",
@@ -54,16 +59,10 @@ def get_available_sessions(date_from, date_to):
         "Class Session",
         filters={
             "status": "Scheduled",
-            "start_datetime": [
-                "between",
-                [
-                    f"{start_date} 00:00:00",
-                    f"{add_days(end_date, 1)} 00:00:00",
-                ],
-            ],
+            "session_date": ["between", [start_date, end_date]],
         },
         fields=SESSION_FIELDS,
-        order_by="start_datetime asc",
+        order_by="session_date asc, start_time asc",
     )
 
     available_sessions = []
@@ -229,14 +228,9 @@ def get_sessions_on(on_date):
     """Sessions starting on ``on_date``, with their fill rate and display names."""
     sessions = frappe.get_all(
         "Class Session",
-        filters={
-            "start_datetime": [
-                "between",
-                [f"{on_date} 00:00:00", f"{on_date} 23:59:59"],
-            ]
-        },
+        filters={"session_date": on_date},
         fields=SESSION_FIELDS,
-        order_by="start_datetime asc",
+        order_by="start_time asc",
     )
 
     if not sessions:
@@ -294,6 +288,7 @@ def get_membership_revenue_since(from_date):
     ).run()
 
     return (result[0][0] if result else 0) or 0
+
 
 @frappe.whitelist()
 def find_members(search_text):
@@ -364,3 +359,30 @@ def check_in_member(member, method="Front Desk"):
     check_in.insert()
 
     return {"name": check_in.name, "check_in_time": check_in.check_in_time}
+
+
+@frappe.whitelist()
+def get_session_calendar_events(start, end, filters=None):
+    """Class sessions for the Class Session calendar view.
+
+    The calendar wants one datetime for the start and one for the end, while
+    the sessions store a date and two times, so they are combined here.
+    """
+    sessions = frappe.get_all(
+        "Class Session",
+        filters={"session_date": ["between", [start, end]]},
+        fields=["name", "gym_class", "session_date", "start_time", "end_time", "status"],
+        order_by="session_date asc, start_time asc",
+    )
+
+    return [
+        {
+            "name": session.name,
+            "subject": session.gym_class,
+            "starts_on": combine_date_time(session.session_date, session.start_time),
+            "ends_on": combine_date_time(session.session_date, session.end_time),
+            "status": session.status,
+        }
+        for session in sessions
+        if session.start_time and session.end_time
+    ]

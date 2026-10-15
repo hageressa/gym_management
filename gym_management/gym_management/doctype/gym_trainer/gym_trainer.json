@@ -10,9 +10,9 @@
     "employee",
     "email",
     "phone",
-    "specialization",
+    "specialties",
     "bio",
-    "status"
+    "is_active"
   ],
   "fields": [
     {
@@ -39,21 +39,21 @@
       "fieldname": "phone"
     },
     {
-      "label": "Specialization",
-      "fieldtype": "Data",
-      "fieldname": "specialization"
-    },
-    {
-      "label": "Status",
-      "fieldtype": "Select",
-      "fieldname": "status",
-      "options": "Active\nInactive",
-      "default": "Active"
-    },
-    {
       "fieldname": "bio",
       "fieldtype": "Text Editor",
       "label": "Bio"
+    },
+    {
+      "label": "Specialties",
+      "fieldtype": "Table MultiSelect",
+      "fieldname": "specialties",
+      "options": "Gym Trainer Specialty"
+    },
+    {
+      "label": "Is Active",
+      "fieldtype": "Check",
+      "fieldname": "is_active",
+      "default": "1"
     }
   ],
   "permissions": [

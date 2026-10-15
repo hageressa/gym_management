@@ -2,9 +2,9 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, get_datetime, now_datetime, today
+from frappe.utils import getdate, now_datetime, today
 
-from gym_management.utils import get_valid_membership
+from gym_management.utils import combine_date_time, get_valid_membership
 
 CONFIRMED_STATUSES = ["Booked", "Attended"]
 
@@ -18,9 +18,9 @@ def set_booking_metadata(doc, method=None):
         doc.cancelled_on = now_datetime()
 
     if doc.member and doc.class_session and not doc.membership:
-        start = frappe.db.get_value("Class Session", doc.class_session, "start_datetime")
-        if start:
-            doc.membership = get_valid_membership(doc.member, getdate(start))
+        session_date = frappe.db.get_value("Class Session", doc.class_session, "session_date")
+        if session_date:
+            doc.membership = get_valid_membership(doc.member, getdate(session_date))
 
 
 def update_session_booked_count(doc, method=None):
@@ -94,10 +94,14 @@ def _adjust_class_credit(doc, change):
 
 def _warn_late_cancellation(doc):
     window = frappe.db.get_single_value("Gym Settings", "cancellation_window_hours") or 0
-    start = frappe.db.get_value("Class Session", doc.class_session, "start_datetime")
-    if not window or not start:
+    session = frappe.db.get_value(
+        "Class Session", doc.class_session, ["session_date", "start_time"], as_dict=True
+    )
+    if not window or not session or not session.session_date or not session.start_time:
         return
-    hours_left = (get_datetime(start) - now_datetime()).total_seconds() / 3600
+
+    start = combine_date_time(session.session_date, session.start_time)
+    hours_left = (start - now_datetime()).total_seconds() / 3600
     if 0 <= hours_left < window:
         frappe.msgprint(
             _("Late cancellation: less than {0} hours before the session.").format(window),

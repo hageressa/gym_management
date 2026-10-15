@@ -9,7 +9,9 @@ created, so a second run only fills in what is missing.
 """
 
 import frappe
-from frappe.utils import add_days, add_to_date, getdate, today
+from frappe.utils import add_days, add_to_date, now_datetime, today
+
+from gym_management.utils import combine_date_time, format_time
 
 ITEM_GROUP = "Gym Services"
 
@@ -20,6 +22,8 @@ SETTINGS = {
     "no_show_limit": 3,
     "expiry_reminder_days": 7,
 }
+
+SPECIALTIES = ["Yoga", "HIIT", "Strength", "Cardio"]
 
 PLANS = [
     {
@@ -52,13 +56,13 @@ PLANS = [
 ]
 
 TRAINERS = [
-    {"trainer_name": "Coach Ahmed", "specialization": "Yoga", "status": "Active"},
-    {"trainer_name": "Coach Mona", "specialization": "HIIT, Strength", "status": "Active"},
+    {"trainer_name": "Coach Ahmed", "specialties": ["Yoga"], "is_active": 1},
+    {"trainer_name": "Coach Mona", "specialties": ["HIIT", "Strength"], "is_active": 1},
 ]
 
 ROOMS = [
-    {"room_name": "Studio A", "capacity": 20, "location": "Ground floor", "status": "Available"},
-    {"room_name": "Studio B", "capacity": 8, "location": "First floor", "status": "Available"},
+    {"room_name": "Studio A", "capacity": 20, "location": "Ground floor", "is_active": 1},
+    {"room_name": "Studio B", "capacity": 8, "location": "First floor", "is_active": 1},
 ]
 
 CLASSES = [
@@ -67,7 +71,7 @@ CLASSES = [
         "category": "Yoga",
         "trainer_name": "Coach Ahmed",
         "room_name": "Studio A",
-        "capacity": 12,
+        "default_capacity": 12,
         "duration_minutes": 60,
     },
     {
@@ -76,7 +80,7 @@ CLASSES = [
         "trainer_name": "Coach Mona",
         "room_name": "Studio B",
         # Deliberately small so the waitlist is easy to demonstrate.
-        "capacity": 2,
+        "default_capacity": 2,
         "duration_minutes": 45,
     },
 ]
@@ -89,9 +93,11 @@ MEMBERS = [
 
 # (class name, days from today, hour) — kept apart so no trainer or room overlaps.
 SESSIONS = [
+    ("Yoga Basics", 0, 18),
+    ("HIIT Express", 0, 20),
     ("Yoga Basics", 1, 18),
-    ("Yoga Basics", 3, 18),
     ("HIIT Express", 1, 20),
+    ("Yoga Basics", 3, 18),
     ("HIIT Express", 4, 20),
 ]
 
@@ -101,6 +107,9 @@ def run():
     ensure_item_group()
     ensure_settings()
 
+    for specialty in SPECIALTIES:
+        ensure_specialty(specialty)
+
     plans = [ensure_plan(values) for values in PLANS]
     trainers = {values["trainer_name"]: ensure_trainer(values) for values in TRAINERS}
     rooms = {values["room_name"]: ensure_room(values) for values in ROOMS}
@@ -108,7 +117,9 @@ def run():
         values["class_name"]: ensure_class(values, trainers, rooms) for values in CLASSES
     }
     members = [ensure_member(values) for values in MEMBERS]
+
     sessions = [ensure_session(name, day, hour, classes) for name, day, hour in SESSIONS]
+    sessions = [name for name in sessions if name]
 
     frappe.db.commit()
 
@@ -145,6 +156,16 @@ def ensure_settings():
     settings.save(ignore_permissions=True)
 
 
+def ensure_specialty(name):
+    if frappe.db.exists("Gym Specialty", name):
+        return name
+
+    frappe.get_doc({"doctype": "Gym Specialty", "specialty_name": name}).insert(
+        ignore_permissions=True
+    )
+    return name
+
+
 def ensure_plan(values):
     if frappe.db.exists("Membership Plan", values["plan_name"]):
         return values["plan_name"]
@@ -159,7 +180,14 @@ def ensure_trainer(values):
     if existing:
         return existing
 
-    trainer = frappe.get_doc({"doctype": "Gym Trainer", **values})
+    trainer = frappe.get_doc(
+        {
+            "doctype": "Gym Trainer",
+            "trainer_name": values["trainer_name"],
+            "is_active": values["is_active"],
+            "specialties": [{"specialty": name} for name in values["specialties"]],
+        }
+    )
     # Link an Employee when the site has one; the field stays empty otherwise.
     trainer.employee = frappe.db.get_value("Employee", {"status": "Active"}, "name")
     trainer.insert(ignore_permissions=True)
@@ -186,9 +214,9 @@ def ensure_class(values, trainers, rooms):
             "doctype": "Gym Class",
             "class_name": values["class_name"],
             "category": values["category"],
-            "trainer": trainers[values["trainer_name"]],
-            "room": rooms[values["room_name"]],
-            "capacity": values["capacity"],
+            "default_trainer": trainers[values["trainer_name"]],
+            "default_room": rooms[values["room_name"]],
+            "default_capacity": values["default_capacity"],
             "duration_minutes": values["duration_minutes"],
             "status": "Active",
         }
@@ -215,28 +243,41 @@ def ensure_member(values):
 
 
 def ensure_session(class_name, days_ahead, hour, classes):
-    """One dated session of a class, starting ``days_ahead`` days from today."""
+    """One dated session of a class, ``days_ahead`` days from today at ``hour``."""
     gym_class_name = classes[class_name]
     gym_class = frappe.get_doc("Gym Class", gym_class_name)
 
-    start = add_to_date(getdate(add_days(today(), days_ahead)), hours=hour)
+    session_date = add_days(today(), days_ahead)
+    start_time = f"{hour:02d}:00:00"
+    start = combine_date_time(session_date, start_time)
+
+    # A Scheduled session may not start in the past, so skip slots already gone.
+    if start <= now_datetime():
+        return None
 
     existing = frappe.db.get_value(
         "Class Session",
-        {"gym_class": gym_class_name, "start_datetime": start},
+        {
+            "gym_class": gym_class_name,
+            "session_date": session_date,
+            "start_time": start_time,
+        },
     )
     if existing:
         return existing
+
+    duration = gym_class.duration_minutes or 60
 
     session = frappe.get_doc(
         {
             "doctype": "Class Session",
             "gym_class": gym_class_name,
-            "trainer": gym_class.trainer,
-            "room": gym_class.room,
-            "start_datetime": start,
-            "end_datetime": add_to_date(start, minutes=gym_class.duration_minutes or 60),
-            "capacity": gym_class.capacity,
+            "trainer": gym_class.default_trainer,
+            "room": gym_class.default_room,
+            "session_date": session_date,
+            "start_time": start_time,
+            "end_time": format_time(add_to_date(start, minutes=duration)),
+            "capacity": gym_class.default_capacity,
             "status": "Scheduled",
         }
     )

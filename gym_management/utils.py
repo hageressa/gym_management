@@ -1,8 +1,10 @@
 """Shared helpers for the gym_management app."""
 
+from datetime import datetime
+
 import frappe
 from frappe import _
-from frappe.utils import getdate
+from frappe.utils import get_time, getdate
 
 
 def get_default_company():
@@ -102,6 +104,7 @@ def get_valid_membership(member, on_date):
             return row.name
     return None
 
+
 def get_latest_membership(member):
     """The member's most recent submitted membership, expired ones included.
 
@@ -114,3 +117,13 @@ def get_latest_membership(member):
         "name",
         order_by="end_date desc",
     )
+
+
+def combine_date_time(date_value, time_value):
+    """A Date field and a Time field as one datetime, for comparing against now."""
+    return datetime.combine(getdate(date_value), get_time(time_value))
+
+
+def format_time(value):
+    """A time value as HH:MM:SS, the form SQL comparisons expect."""
+    return get_time(value).strftime("%H:%M:%S")

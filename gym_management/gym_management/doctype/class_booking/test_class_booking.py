@@ -16,7 +16,8 @@ class TestClassBooking(unittest.TestCase):
     def test_rejects_non_scheduled_session(self, mock_get_doc):
         mock_get_doc.return_value = SimpleNamespace(
             status="Cancelled",
-            start_datetime=None,
+            session_date=None,
+            start_time=None,
         )
 
         booking = ClassBooking({
@@ -126,7 +127,8 @@ class TestClassBooking(unittest.TestCase):
     ):
         session = SimpleNamespace(
             status="Scheduled",
-            start_datetime=None,
+            session_date=None,
+            start_time=None,
             capacity=2,
         )
         promoted_booking = SimpleNamespace(
@@ -201,7 +203,8 @@ class TestClassBooking(unittest.TestCase):
     ):
         session = SimpleNamespace(
             status="Scheduled",
-            start_datetime=None,
+            session_date=None,
+            start_time=None,
             capacity=2,
         )
 
@@ -434,7 +437,8 @@ class TestClassBooking(unittest.TestCase):
     ):
         mock_get_doc.return_value = SimpleNamespace(
             status="Scheduled",
-            start_datetime=datetime(2026, 10, 14, 11, 0, 0),
+            session_date="2026-10-14",
+            start_time="11:00:00",
         )
         booking = ClassBooking({
             "doctype": "Class Booking",

@@ -9,9 +9,9 @@
     "class_name",
     "category",
     "description",
-    "trainer",
-    "room",
-    "capacity",
+    "default_trainer",
+    "default_room",
+    "default_capacity",
     "duration_minutes",
     "status"
   ],
@@ -28,22 +28,22 @@
       "fieldname": "description"
     },
     {
-      "label": "Trainer",
+      "label": "Default Trainer",
       "fieldtype": "Link",
-      "fieldname": "trainer",
+      "fieldname": "default_trainer",
       "options": "Gym Trainer",
       "reqd": 1
     },
     {
-      "label": "Room",
+      "label": "Default Room",
       "fieldtype": "Link",
-      "fieldname": "room",
+      "fieldname": "default_room",
       "options": "Gym Room"
     },
     {
-      "label": "Capacity",
+      "label": "Default Capacity",
       "fieldtype": "Int",
-      "fieldname": "capacity",
+      "fieldname": "default_capacity",
       "reqd": 1
     },
     {
