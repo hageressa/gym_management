@@ -101,3 +101,16 @@ def get_valid_membership(member, on_date):
         if get_membership_block_reason(membership, on_date) is None:
             return row.name
     return None
+
+def get_latest_membership(member):
+    """The member's most recent submitted membership, expired ones included.
+
+    The front desk needs this to explain *why* entry is refused, which a
+    search for Active memberships alone could not tell them.
+    """
+    return frappe.db.get_value(
+        "Gym Membership",
+        {"member": member, "docstatus": 1},
+        "name",
+        order_by="end_date desc",
+    )

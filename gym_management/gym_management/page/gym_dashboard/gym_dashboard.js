@@ -39,6 +39,8 @@ class GymDashboard {
 	}
 
 	render_cards(data) {
+		const sessions_today = (data.today_sessions || []).length;
+
 		const cards = [
 			{
 				label: __("Active Members"),
@@ -48,12 +50,13 @@ class GymDashboard {
 			{
 				label: __("Expiring in 7 Days"),
 				value: data.expiring_soon,
-				colour: data.expiring_soon > 0 ? "orange" : "green",
+				// Only worth drawing the eye when there is something to act on.
+				warn: data.expiring_soon > 0,
 				route: ["List", "Gym Membership", { status: "Active" }],
 			},
 			{
 				label: __("Sessions Today"),
-				value: (data.today_sessions || []).length,
+				value: sessions_today,
 				route: ["List", "Class Session"],
 			},
 			{
@@ -65,15 +68,16 @@ class GymDashboard {
 		const row = $('<div class="row">').appendTo(this.body);
 
 		cards.forEach((card) => {
-			const column = $('<div class="col-sm-3">').appendTo(row);
-			const colour = card.colour || "blue";
+			const column = $('<div class="col-sm-3 col-xs-6">').appendTo(row);
 
 			const $card = $(`
-				<div class="card h-100" style="padding: 15px; margin-bottom: 15px; cursor: ${
-					card.route ? "pointer" : "default"
-				}">
-					<div class="text-muted" style="font-size: 12px">${frappe.utils.escape_html(card.label)}</div>
-					<div class="indicator-pill ${colour}" style="margin-top: 8px; font-size: 18px; font-weight: 600">
+				<div class="card" style="padding: 14px; margin-bottom: 15px; height: 100%;
+					cursor: ${card.route ? "pointer" : "default"}">
+					<div class="text-muted ellipsis" style="font-size: 12px; margin-bottom: 6px">
+						${frappe.utils.escape_html(card.label)}
+					</div>
+					<div class="ellipsis" style="font-size: 20px; font-weight: 600; line-height: 1.3;
+						color: ${card.warn ? "var(--orange-600, #b45309)" : "inherit"}">
 						${frappe.utils.escape_html(String(card.value))}
 					</div>
 				</div>
@@ -101,10 +105,10 @@ class GymDashboard {
 			<table class="table table-bordered">
 				<thead>
 					<tr>
-						<th>${__("Time")}</th>
+						<th style="width: 15%">${__("Time")}</th>
 						<th>${__("Class")}</th>
 						<th>${__("Trainer")}</th>
-						<th>${__("Booked")}</th>
+						<th style="width: 12%">${__("Booked")}</th>
 						<th style="width: 30%">${__("Fill Rate")}</th>
 					</tr>
 				</thead>
@@ -125,7 +129,7 @@ class GymDashboard {
 					<td>${frappe.utils.escape_html(session.trainer_name || session.trainer || "")}</td>
 					<td>${session.booked_count || 0} / ${session.capacity || 0}</td>
 					<td>
-						<div class="progress" style="margin: 0">
+						<div class="progress" style="margin: 0; height: 8px">
 							<div class="progress-bar background-${colour}"
 								style="width: ${Math.min(fill, 100)}%"></div>
 						</div>

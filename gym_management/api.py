@@ -3,6 +3,8 @@ from frappe import _
 from frappe.query_builder.functions import Sum
 from frappe.utils import add_days, getdate, today
 
+from gym_management.utils import get_latest_membership, get_membership_block_reason
+
 SESSION_FIELDS = [
     "name",
     "gym_class",
@@ -292,3 +294,73 @@ def get_membership_revenue_since(from_date):
     ).run()
 
     return (result[0][0] if result else 0) or 0
+
+@frappe.whitelist()
+def find_members(search_text):
+    """Front desk lookup by name, phone, email or member id.
+
+    A QR scanner types the member id into the same box, so scanning is covered
+    by the id match and needs no separate endpoint.
+    """
+    search_text = (search_text or "").strip()
+    if len(search_text) < 2:
+        return []
+
+    pattern = f"%{search_text}%"
+
+    return frappe.get_all(
+        "Gym Member",
+        or_filters={
+            "name": ["like", pattern],
+            "member_name": ["like", pattern],
+            "phone": ["like", pattern],
+            "email": ["like", pattern],
+        },
+        fields=["name", "member_name", "phone", "status"],
+        order_by="member_name asc",
+        limit=10,
+    )
+
+
+@frappe.whitelist()
+def get_check_in_status(member):
+    """Whether this member may enter today, and the reason when they may not."""
+    membership_name = get_latest_membership(member)
+
+    if not membership_name:
+        return {
+            "member": member,
+            "allowed": False,
+            "reason": _("no membership on file"),
+        }
+
+    membership = frappe.get_doc("Gym Membership", membership_name)
+    reason = get_membership_block_reason(membership, today())
+
+    return {
+        "member": member,
+        "allowed": reason is None,
+        "reason": reason,
+        "membership": membership.name,
+        "plan": membership.membership_plan,
+        "status": membership.status,
+        "end_date": membership.end_date,
+        "classes_remaining": membership.classes_remaining,
+    }
+
+
+@frappe.whitelist()
+def check_in_member(member, method="Front Desk"):
+    """Record a check-in.
+
+    The Gym Check In controller re-checks the entry rules, so a member blocked
+    between the status call and this one is still refused.
+    """
+    check_in = frappe.get_doc({
+        "doctype": "Gym Check In",
+        "member": member,
+        "method": method,
+    })
+    check_in.insert()
+
+    return {"name": check_in.name, "check_in_time": check_in.check_in_time}
