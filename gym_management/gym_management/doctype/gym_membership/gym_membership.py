@@ -6,7 +6,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_days, add_months, getdate, today
 
-from gym_management.utils import get_default_company, get_selling_price_list
+from gym_management.utils import (
+    get_default_company,
+    get_selling_price_list,
+    sync_member_active_membership,
+)
 
 
 class GymMembership(Document):
@@ -81,7 +85,7 @@ class GymMembership(Document):
 
         plan = frappe.get_doc("Membership Plan", self.membership_plan)
         if plan.duration_type == "Class Pack":
-            self.classes_remaining = plan.duration_value
+            self.classes_remaining = plan.classes_included or plan.duration_value
 
     def before_submit(self):
         self.validate_single_active_membership()
@@ -108,6 +112,7 @@ class GymMembership(Document):
         invoice = self.create_sales_invoice()
         self.db_set("sales_invoice", invoice.name)
         self.db_set("status", "Active")
+        sync_member_active_membership(self.member)
 
     def create_sales_invoice(self):
         """Build and submit the Sales Invoice for the plan Item."""
@@ -189,6 +194,7 @@ class GymMembership(Document):
 
     def on_cancel(self):
         self.db_set("status", "Cancelled")
+        sync_member_active_membership(self.member)
 
         if not self.sales_invoice:
             return

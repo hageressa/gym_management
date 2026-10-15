@@ -7,6 +7,7 @@ from gym_management.utils import (
     combine_date_time,
     get_latest_membership,
     get_membership_block_reason,
+    sync_member_active_membership,
 )
 
 SESSION_FIELDS = [
@@ -102,6 +103,7 @@ def freeze_membership(membership_name, freeze_from, freeze_to, reason=None):
 
     if start <= getdate(today()) <= end:
         membership.db_set("status", "Frozen")
+        sync_member_active_membership(membership.member)
 
     return {
         "membership": membership.name,

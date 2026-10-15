@@ -8,6 +8,11 @@ from gym_management.gym_management.doctype.class_session.class_session import Cl
 MODULE = "gym_management.gym_management.doctype.class_session.class_session"
 
 
+def frappe_dict(**values):
+    """Stand-in for the dict frappe.db.get_value returns with as_dict=True."""
+    return SimpleNamespace(**values)
+
+
 def make_session(**values):
     defaults = {
         "doctype": "Class Session",
@@ -153,3 +158,31 @@ class TestClassSessionOverlaps(unittest.TestCase):
         self.assertEqual(filters["session_date"], "2026-10-15")
         self.assertEqual(filters["start_time"], ["<", "11:00:00"])
         self.assertEqual(filters["end_time"], [">", "10:00:00"])
+
+
+class TestClassSessionDefaults(unittest.TestCase):
+    @patch(f"{MODULE}.frappe.db.get_value")
+    def test_trainer_room_and_capacity_come_from_the_class(self, get_value):
+        get_value.return_value = frappe_dict(
+            default_trainer="TRN-0001", default_room="ROOM-0001", default_capacity=12
+        )
+        session = make_session(gym_class="CLASS-0001")
+
+        session.set_defaults_from_class()
+
+        self.assertEqual(session.trainer, "TRN-0001")
+        self.assertEqual(session.room, "ROOM-0001")
+        self.assertEqual(session.capacity, 12)
+
+    @patch(f"{MODULE}.frappe.db.get_value")
+    def test_values_set_on_the_session_win_over_the_class(self, get_value):
+        get_value.return_value = frappe_dict(
+            default_trainer="TRN-0001", default_room="ROOM-0001", default_capacity=12
+        )
+        session = make_session(gym_class="CLASS-0001", trainer="TRN-0009", capacity=4)
+
+        session.set_defaults_from_class()
+
+        self.assertEqual(session.trainer, "TRN-0009")
+        self.assertEqual(session.capacity, 4)
+        self.assertEqual(session.room, "ROOM-0001")

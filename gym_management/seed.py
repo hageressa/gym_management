@@ -11,7 +11,7 @@ created, so a second run only fills in what is missing.
 import frappe
 from frappe.utils import add_days, add_to_date, now_datetime, today
 
-from gym_management.utils import combine_date_time, format_time
+from gym_management.utils import combine_date_time, format_time, get_default_company
 
 ITEM_GROUP = "Gym Services"
 
@@ -55,9 +55,10 @@ PLANS = [
     },
 ]
 
+# Gym Trainer requires a unique Employee, so each trainer gets one of their own.
 TRAINERS = [
-    {"trainer_name": "Coach Ahmed", "specialties": ["Yoga"], "is_active": 1},
-    {"trainer_name": "Coach Mona", "specialties": ["HIIT", "Strength"], "is_active": 1},
+    {"trainer_name": "Ahmed Hassan", "specialties": ["Yoga"], "is_active": 1},
+    {"trainer_name": "Mona Khaled", "specialties": ["HIIT", "Strength"], "is_active": 1},
 ]
 
 ROOMS = [
@@ -69,7 +70,7 @@ CLASSES = [
     {
         "class_name": "Yoga Basics",
         "category": "Yoga",
-        "trainer_name": "Coach Ahmed",
+        "trainer_name": "Ahmed Hassan",
         "room_name": "Studio A",
         "default_capacity": 12,
         "duration_minutes": 60,
@@ -77,7 +78,7 @@ CLASSES = [
     {
         "class_name": "HIIT Express",
         "category": "HIIT",
-        "trainer_name": "Coach Mona",
+        "trainer_name": "Mona Khaled",
         "room_name": "Studio B",
         # Deliberately small so the waitlist is easy to demonstrate.
         "default_capacity": 2,
@@ -175,21 +176,51 @@ def ensure_plan(values):
     return plan.name
 
 
+def ensure_employee(full_name):
+    """Gym Trainer links 1:1 to an Employee, so the seed needs one per trainer."""
+    existing = frappe.db.get_value("Employee", {"employee_name": full_name})
+    if existing:
+        return existing
+
+    company = get_default_company()
+    if not company:
+        frappe.throw("Set a default Company before seeding trainers.")
+
+    first_name, _, last_name = full_name.partition(" ")
+
+    employee = frappe.get_doc(
+        {
+            "doctype": "Employee",
+            "first_name": first_name,
+            "last_name": last_name,
+            "gender": frappe.db.get_value("Gender", {"name": "Other"})
+            or frappe.db.get_value("Gender", {}, "name"),
+            "date_of_birth": "1990-01-01",
+            "date_of_joining": today(),
+            "company": company,
+            "status": "Active",
+        }
+    )
+    employee.insert(ignore_permissions=True)
+    return employee.name
+
+
 def ensure_trainer(values):
-    existing = frappe.db.get_value("Gym Trainer", {"trainer_name": values["trainer_name"]})
+    employee = ensure_employee(values["trainer_name"])
+
+    existing = frappe.db.get_value("Gym Trainer", {"employee": employee})
     if existing:
         return existing
 
     trainer = frappe.get_doc(
         {
             "doctype": "Gym Trainer",
+            "employee": employee,
             "trainer_name": values["trainer_name"],
             "is_active": values["is_active"],
             "specialties": [{"specialty": name} for name in values["specialties"]],
         }
     )
-    # Link an Employee when the site has one; the field stays empty otherwise.
-    trainer.employee = frappe.db.get_value("Employee", {"status": "Active"}, "name")
     trainer.insert(ignore_permissions=True)
     return trainer.name
 

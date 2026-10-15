@@ -8,12 +8,34 @@ from gym_management.utils import combine_date_time, format_time
 
 class ClassSession(Document):
     def validate(self):
+        self.set_defaults_from_class()
         self.set_end_time()
         self.validate_time_range()
         self.validate_not_in_the_past()
         self.validate_class_and_capacity()
         self.validate_room_and_trainer_availability()
         self.validate_no_overlaps()
+
+    def set_defaults_from_class(self):
+        """Trainer, room and capacity default from the class template."""
+        if not self.gym_class:
+            return
+
+        defaults = frappe.db.get_value(
+            "Gym Class",
+            self.gym_class,
+            ["default_trainer", "default_room", "default_capacity"],
+            as_dict=True,
+        )
+        if not defaults:
+            return
+
+        if not self.trainer:
+            self.trainer = defaults.default_trainer
+        if not self.room:
+            self.room = defaults.default_room
+        if not self.capacity:
+            self.capacity = defaults.default_capacity
 
     def get_start(self):
         """The session's start as a datetime, for comparing against 'now'."""

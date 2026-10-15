@@ -127,3 +127,22 @@ def combine_date_time(date_value, time_value):
 def format_time(value):
     """A time value as HH:MM:SS, the form SQL comparisons expect."""
     return get_time(value).strftime("%H:%M:%S")
+
+
+def sync_member_active_membership(member):
+    """Point Gym Member.active_membership at that member's Active membership.
+
+    The field is read-only on the form, so the system owns it. This is the one
+    place that writes it, and it clears the field when nothing is active.
+    """
+    if not member:
+        return
+
+    active = frappe.db.get_value(
+        "Gym Membership",
+        {"member": member, "docstatus": 1, "status": "Active"},
+        "name",
+    )
+    frappe.db.set_value(
+        "Gym Member", member, "active_membership", active, update_modified=False
+    )

@@ -7,7 +7,7 @@
   "autoname": "format:CHECKIN-{####}",
   "field_order": [
     "member",
-    "gym_membership",
+    "membership",
     "check_in_time",
     "check_out_time",
     "method",
@@ -23,9 +23,9 @@
       "reqd": 1
     },
     {
-      "label": "Gym Membership",
+      "label": "Membership",
       "fieldtype": "Link",
-      "fieldname": "gym_membership",
+      "fieldname": "membership",
       "options": "Gym Membership",
       "reqd": 1
     },

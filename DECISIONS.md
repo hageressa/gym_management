@@ -38,8 +38,9 @@ timetable, not about employment.
 
 `Gym Trainer` therefore holds `specialties` (a Table MultiSelect over a `Gym Specialty`
 master, so the same specialty is spelled the same way everywhere), `bio` and `is_active`,
-and links to `Employee` when HR data exists. The link is **not** mandatory, so the app
-installs and seeds on a site with no employees.
+and links 1:1 to an `Employee`. The link is mandatory and unique, as the brief asks, and
+`trainer_name` is fetched from the employee so the two can never drift apart. The seed
+script creates an Employee per trainer for that reason.
 
 **Trade-off:** two records per person. Accepted, because the alternative couples class
 scheduling to payroll.

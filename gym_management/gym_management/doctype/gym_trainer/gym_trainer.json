@@ -19,13 +19,17 @@
       "label": "Trainer Name",
       "fieldtype": "Data",
       "fieldname": "trainer_name",
-      "reqd": 1
+      "reqd": 1,
+      "fetch_from": "employee.employee_name",
+      "read_only": 1
     },
     {
       "label": "Employee",
       "fieldtype": "Link",
       "fieldname": "employee",
-      "options": "Employee"
+      "options": "Employee",
+      "reqd": 1,
+      "unique": 1
     },
     {
       "label": "Email",

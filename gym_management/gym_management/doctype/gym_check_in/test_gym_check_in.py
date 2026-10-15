@@ -37,7 +37,7 @@ class TestGymCheckIn(unittest.TestCase):
             end_date=None,
         )
 
-        checkin.gym_membership = "TEST-MEMBERSHIP"
+        checkin.membership = "TEST-MEMBERSHIP"
 
         with patch(
             "gym_management.gym_management.doctype.gym_check_in.gym_check_in.frappe.get_doc",

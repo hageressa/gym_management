@@ -3,6 +3,8 @@ from html import escape
 import frappe
 from frappe.utils import add_days, getdate, today
 
+from gym_management.utils import sync_member_active_membership
+
 
 def update_expired_memberships():
     expired_memberships = frappe.get_all(
@@ -19,6 +21,7 @@ def update_expired_memberships():
         membership = frappe.get_doc("Gym Membership", membership_name)
         if membership.end_date and getdate(membership.end_date) < getdate(today()):
             membership.db_set("status", "Expired", update_modified=False)
+            sync_member_active_membership(membership.member)
 
     frappe.db.commit()
 
@@ -102,3 +105,4 @@ def sync_freeze_statuses():
 
         if membership.status != new_status:
             membership.db_set("status", new_status, update_modified=False)
+            sync_member_active_membership(membership.member)

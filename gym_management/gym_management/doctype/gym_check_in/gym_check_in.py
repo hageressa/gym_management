@@ -16,7 +16,7 @@ class GymCheckIn(Document):
         if not self.member:
             frappe.throw(_("Please select a Gym Member."))
 
-        membership_name = self.gym_membership or self.get_latest_membership_name()
+        membership_name = self.membership or self.get_latest_membership_name()
         if not membership_name:
             frappe.throw(_("This member has no submitted membership."))
 
@@ -26,7 +26,7 @@ class GymCheckIn(Document):
 
         self.check_membership_allows_entry(membership)
 
-        self.gym_membership = membership.name
+        self.membership = membership.name
         if not self.check_in_time:
             self.check_in_time = now_datetime()
 

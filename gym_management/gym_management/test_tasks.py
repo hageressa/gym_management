@@ -1,6 +1,5 @@
 from unittest.mock import Mock, patch
 
-import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, today
 
@@ -12,11 +11,12 @@ from gym_management.tasks import (
 
 
 class TestExpiredMembershipTask(FrappeTestCase):
+    @patch("gym_management.tasks.sync_member_active_membership")
     @patch("gym_management.tasks.frappe.db.commit")
     @patch("gym_management.tasks.frappe.get_doc")
     @patch("gym_management.tasks.frappe.get_all")
     def test_updates_only_expired_active_memberships(
-        self, get_all, get_doc, db_commit
+        self, get_all, get_doc, db_commit, sync_active
     ):
         membership = Mock()
         membership.end_date = "2026-10-13"
@@ -33,6 +33,8 @@ class TestExpiredMembershipTask(FrappeTestCase):
         membership.db_set.assert_called_once_with(
             "status", "Expired", update_modified=False
         )
+        # Expiring a membership must also release it from the member record.
+        sync_active.assert_called_once_with(membership.member)
         db_commit.assert_called_once()
 
     @patch("gym_management.tasks.frappe.db.commit")
@@ -134,7 +136,9 @@ class TestSyncFreezeStatuses(FrappeTestCase):
 
         with patch(
             "gym_management.tasks.frappe.get_all", return_value=["TEST-MEMBERSHIP"]
-        ), patch("gym_management.tasks.frappe.get_doc", return_value=membership):
+        ), patch(
+            "gym_management.tasks.frappe.get_doc", return_value=membership
+        ), patch("gym_management.tasks.sync_member_active_membership"):
             sync_freeze_statuses()
 
         return membership

@@ -13,7 +13,7 @@ class TestMembershipEdgeCases(unittest.TestCase):
         return GymCheckIn({
             "doctype": "Gym Check In",
             "member": "TEST-MEMBER",
-            "gym_membership": "TEST-MEMBERSHIP",
+            "membership": "TEST-MEMBERSHIP",
         })
 
     def make_membership(self, **overrides):
@@ -42,10 +42,12 @@ class TestMembershipEdgeCases(unittest.TestCase):
     def test_rejects_membership_frozen_today(self):
         today = date.today()
         membership = self.make_membership(
-            get=lambda field: [{
-                "freeze_from": today - timedelta(days=1),
-                "freeze_to": today + timedelta(days=1),
-            }] if field == "freeze_history" else []
+            get=lambda field: [
+                SimpleNamespace(
+                    freeze_from=today - timedelta(days=1),
+                    freeze_to=today + timedelta(days=1),
+                )
+            ] if field == "freeze_history" else []
         )
         self.assert_membership_rejected(membership)
 
