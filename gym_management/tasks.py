@@ -1,5 +1,6 @@
-import frappe
 from html import escape
+
+import frappe
 from frappe.utils import add_days, getdate, today
 
 

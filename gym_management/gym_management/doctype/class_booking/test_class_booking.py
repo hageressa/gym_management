@@ -1,8 +1,8 @@
 
 import unittest
-from unittest.mock import patch, Mock
-from types import SimpleNamespace
 from datetime import datetime
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from gym_management.gym_management.doctype.class_booking.class_booking import (
     ClassBooking,

@@ -1,7 +1,7 @@
 
 import unittest
-from unittest.mock import patch
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from gym_management.gym_management.doctype.gym_check_in.gym_check_in import (
     GymCheckIn,

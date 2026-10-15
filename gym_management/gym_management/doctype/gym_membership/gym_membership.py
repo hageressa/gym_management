@@ -1,4 +1,6 @@
 
+from itertools import pairwise
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -37,7 +39,7 @@ class GymMembership(Document):
             periods.append((freeze_from, freeze_to))
 
         periods.sort(key=lambda period: period[0])
-        for previous, current in zip(periods, periods[1:]):
+        for previous, current in pairwise(periods):
             if current[0] <= previous[1]:
                 frappe.throw("Membership freeze periods cannot overlap.")
 

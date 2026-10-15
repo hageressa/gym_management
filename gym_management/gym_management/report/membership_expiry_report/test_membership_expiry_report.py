@@ -1,6 +1,6 @@
-import frappe
 from unittest.mock import patch
 
+import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, today
 
@@ -51,7 +51,7 @@ class TestMembershipExpiryReport(FrappeTestCase):
             "gym_management.gym_management.report.membership_expiry_report.membership_expiry_report.frappe.db.sql",
             return_value=[],
         ) as sql_mock:
-            columns, rows = execute(filters)
+            _columns, rows = execute(filters)
 
         query = sql_mock.call_args.args[0]
         values = sql_mock.call_args.args[1]

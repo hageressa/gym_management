@@ -1,7 +1,7 @@
 import frappe
+from frappe.model.document import Document
 
 from gym_management.utils import get_selling_price_list
-from frappe.model.document import Document
 
 
 class MembershipPlan(Document):

@@ -63,7 +63,7 @@ class TestGymMembership(unittest.TestCase):
         membership.calculate_end_date()
 
         self.assertIsNone(membership.end_date)
-        
+
     @patch(
         "gym_management.gym_management.doctype.gym_membership.gym_membership.frappe.get_doc"
     )
@@ -149,6 +149,7 @@ class TestGymMembership(unittest.TestCase):
 
     def test_existing_sales_invoice_is_not_recreated(self):
         from unittest.mock import MagicMock, patch
+
         from gym_management.gym_management.doctype.gym_membership.gym_membership import GymMembership
 
         doc = GymMembership.__new__(GymMembership)
