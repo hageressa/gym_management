@@ -1,11 +1,9 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, now_datetime, today
+from frappe.utils import now_datetime, today
 
-from gym_management.utils import is_frozen_on
-
-
+from gym_management.utils import get_membership_block_reason
 class GymCheckIn(Document):
     def validate(self):
         self.validate_membership()
@@ -39,25 +37,10 @@ class GymCheckIn(Document):
         )
 
     def check_membership_allows_entry(self, membership):
-    
-        today_date = getdate(today())
-
-        if membership.status == "Cancelled":
-            frappe.throw(_("Entry denied: membership is cancelled."))
-
-        if membership.status == "Expired" or (
-            membership.end_date and getdate(membership.end_date) < today_date
-        ):
-            frappe.throw(_("Entry denied: membership has expired."))
-
-        if membership.status == "Frozen" or is_frozen_on(membership, today_date):
-            frappe.throw(_("Entry denied: membership is frozen today."))
-
-        if membership.start_date and getdate(membership.start_date) > today_date:
-            frappe.throw(_("Entry denied: membership has not started yet."))
-
-        if membership.status != "Active":
-            frappe.throw(_("Entry denied: membership is not active."))
+        
+        reason = get_membership_block_reason(membership, today())
+        if reason:
+            frappe.throw(_("Entry denied: {0}.").format(reason))
     def validate_class_booking(self):
         if not self.class_booking:
             return
