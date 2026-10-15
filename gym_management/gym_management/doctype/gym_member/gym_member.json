@@ -24,7 +24,8 @@
    "fieldname": "member_name",
    "fieldtype": "Data",
    "label": "Member Name",
-   "reqd": 1
+   "reqd": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "customer",
@@ -42,7 +43,8 @@
   {
    "fieldname": "phone",
    "fieldtype": "Data",
-   "label": "Phone"
+   "label": "Phone",
+   "in_list_view": 1
   },
   {
    "fieldname": "date_of_birth",
@@ -70,7 +72,8 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Prospect\nActive\nInactive\nBlacklisted"
+   "options": "Prospect\nActive\nInactive\nBlacklisted",
+   "in_list_view": 1
   },
   {
    "fieldname": "emergency_contact_name",

@@ -61,13 +61,15 @@
    "fieldname": "end_date",
    "fieldtype": "Date",
    "label": "End Date",
-   "read_only": 1
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nActive\nFrozen\nExpired\nCancelled"
+   "options": "Draft\nActive\nFrozen\nExpired\nCancelled",
+   "in_list_view": 1
   },
   {
    "fieldname": "classes_remaining",

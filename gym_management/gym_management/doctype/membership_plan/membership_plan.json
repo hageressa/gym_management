@@ -34,17 +34,19 @@
    "fieldname": "duration_type",
    "fieldtype": "Select",
    "label": "Duration Type",
-   "options": "Days\nMonths\nClass Pack"
+   "options": "Days\nMonths\nClass Pack",
+   "in_list_view": 1
   },
   {
    "fieldname": "duration_value",
-  "fieldtype": "Int",
-  "label": "Duration Value"
+   "fieldtype": "Int",
+   "label": "Duration Value"
   },
   {
    "fieldname": "price",
-  "fieldtype": "Currency",
-  "label": "Price"
+   "fieldtype": "Currency",
+   "label": "Price",
+   "in_list_view": 1
   },
   {
    "fieldname": "classes_included",
@@ -58,8 +60,9 @@
   },
   {
    "fieldname": "is_active",
-  "fieldtype": "Check",
-  "label": "Is Active"
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "in_list_view": 1
   }
  ],
  "grid_page_length": 50,

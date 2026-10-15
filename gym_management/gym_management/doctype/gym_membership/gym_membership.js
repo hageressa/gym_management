@@ -1,112 +1,127 @@
 frappe.ui.form.on("Gym Membership", {
-    setup(frm) {
-        // Gym Member has no "disabled" field; the real rule is that a
-        // blacklisted member may not be sold a membership.
-        frm.set_query("member", () => ({
-            filters: { status: ["!=", "Blacklisted"] }
-        }));
-    },
+	setup(frm) {
+		// Gym Member has no "disabled" field; the real rule is that a
+		// blacklisted member may not be sold a membership.
+		frm.set_query("member", () => ({
+			filters: { status: ["!=", "Blacklisted"] },
+		}));
+	},
 
-    refresh(frm) {
-        const status_colors = {
-            Draft: "gray",
-            Active: "green",
-            Frozen: "orange",
-            Expired: "red",
-            Cancelled: "red"
-        };
+	refresh(frm) {
+		frm.trigger("show_status_indicator");
+		frm.trigger("lock_fields_once_settled");
+		frm.trigger("add_action_buttons");
+	},
 
-        if (frm.doc.status) {
-            frm.set_indicator(
-                __(frm.doc.status),
-                status_colors[frm.doc.status] || "gray"
-            );
-        }
+	show_status_indicator(frm) {
+		const colours = {
+			Draft: "grey",
+			Active: "green",
+			Frozen: "orange",
+			Expired: "red",
+			Cancelled: "grey",
+		};
 
-        if (frm.is_new() || frm.doc.docstatus !== 1) return;
+		if (frm.doc.status) {
+			frm.page.set_indicator(__(frm.doc.status), colours[frm.doc.status] || "grey");
+		}
+	},
 
-        const status = frm.doc.status;
-        const lock_fields = ["member", "membership_plan", "start_date", "auto_renew"];
+	lock_fields_once_settled(frm) {
+		if (frm.is_new() || frm.doc.docstatus !== 1) {
+			return;
+		}
 
-        lock_fields.forEach(field => {
-            frm.set_df_property(field, "read_only",
-                ["Frozen", "Expired", "Cancelled"].includes(status) ? 1 : 0
-            );
-        });
+		// Once a membership is frozen, expired or cancelled, its terms are history.
+		const settled = ["Frozen", "Expired", "Cancelled"].includes(frm.doc.status);
 
-        if (status === "Active" || status === "Frozen") {
-            frm.add_custom_button(__("Freeze"), () => {
-                frappe.prompt([
-                    {
-                        fieldname: "freeze_from",
-                        label: __("Freeze From"),
-                        fieldtype: "Date",
-                        reqd: 1,
-                        default: frappe.datetime.get_today()
-                    },
-                    {
-                        fieldname: "freeze_to",
-                        label: __("Freeze To"),
-                        fieldtype: "Date",
-                        reqd: 1
-                    },
-                    {
-                        fieldname: "reason",
-                        label: __("Reason"),
-                        fieldtype: "Small Text"
-                    }
-                ], values => {
-                    frappe.call({
-                        method: "gym_management.api.freeze_membership",
-                        args: {
-                            membership_name: frm.doc.name,
-                            freeze_from: values.freeze_from,
-                            freeze_to: values.freeze_to,
-                            reason: values.reason
-                        },
-                        freeze: true,
-                        freeze_message: __("Saving freeze period..."),
-                        callback: r => {
-                            if (r.message) {
-                                frappe.msgprint(
-                                    r.message.message ||
-                                    __("Freeze period saved.")
-                                );
-                                frm.reload_doc();
-                            }
-                        }
-                    });
-                }, __("Freeze Membership"), __("Save"));
-            }, __("Actions"));
-        }
+		["member", "membership_plan", "start_date", "auto_renew"].forEach((field) => {
+			frm.set_df_property(field, "read_only", settled ? 1 : 0);
+		});
+	},
 
-        if (status === "Expired") {
-            frm.add_custom_button(__("Renew"), () => {
-                frappe.confirm(
-                    __("Create a new membership for this member?"),
-                    () => {
-                        frappe.call({
-                            method: "gym_management.api.renew_membership",
-                            args: { membership_name: frm.doc.name },
-                            freeze: true,
-                            freeze_message: __("Renewing membership..."),
-                            callback: r => {
-                                if (r.message && r.message.name) {
-                                    frappe.msgprint(
-                                        __("New membership created: ") +
-                                        r.message.name
-                                    );
-                                    frappe.set_route(
-                                        "Form",
-                                        "Gym Membership",
-                                        r.message.name
-                                    );
-                                }
-                            }
-                        });
-                    }
-                );
-            }, __("Actions"));
-        }
-    }
+	add_action_buttons(frm) {
+		if (frm.is_new() || frm.doc.docstatus !== 1) {
+			return;
+		}
+
+		if (["Active", "Frozen"].includes(frm.doc.status)) {
+			frm.add_custom_button(__("Freeze"), () => freeze_membership(frm), __("Actions"));
+		}
+
+		if (frm.doc.status === "Expired") {
+			frm.add_custom_button(__("Renew"), () => renew_membership(frm), __("Actions"));
+		}
+	},
 });
+
+function freeze_membership(frm) {
+	frappe.prompt(
+		[
+			{
+				fieldname: "freeze_from",
+				label: __("Freeze From"),
+				fieldtype: "Date",
+				reqd: 1,
+				default: frappe.datetime.get_today(),
+			},
+			{
+				fieldname: "freeze_to",
+				label: __("Freeze To"),
+				fieldtype: "Date",
+				reqd: 1,
+			},
+			{
+				fieldname: "reason",
+				label: __("Reason"),
+				fieldtype: "Small Text",
+			},
+		],
+		(values) => {
+			frappe.call({
+				method: "gym_management.api.freeze_membership",
+				args: {
+					membership_name: frm.doc.name,
+					freeze_from: values.freeze_from,
+					freeze_to: values.freeze_to,
+					reason: values.reason,
+				},
+				freeze: true,
+				freeze_message: __("Saving freeze period…"),
+				callback: ({ message }) => {
+					if (!message) {
+						return;
+					}
+					frappe.show_alert(
+						{
+							message: __("Frozen. Membership now ends {0}.", [
+								frappe.datetime.str_to_user(message.end_date),
+							]),
+							indicator: "orange",
+						},
+						7
+					);
+					frm.reload_doc();
+				},
+			});
+		},
+		__("Freeze Membership"),
+		__("Freeze")
+	);
+}
+
+function renew_membership(frm) {
+	frappe.confirm(__("Create and submit a new membership for this member?"), () => {
+		frappe.call({
+			method: "gym_management.api.renew_membership",
+			args: { membership_name: frm.doc.name },
+			freeze: true,
+			freeze_message: __("Renewing membership…"),
+			callback: ({ message }) => {
+				if (message && message.name) {
+					frappe.set_route("Form", "Gym Membership", message.name);
+				}
+			},
+		});
+	});
+}
