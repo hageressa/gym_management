@@ -9,7 +9,8 @@
   "cancellation_window_hours",
   "enable_waitlist",
   "no_show_limit",
-  "expiry_reminder_days"
+  "expiry_reminder_days",
+  "door_access_token"
  ],
  "fields": [
   {
@@ -43,6 +44,12 @@
    "fieldname": "expiry_reminder_days",
    "fieldtype": "Int",
    "label": "Expiry Reminder Days"
+  },
+  {
+   "label": "Door Access Token",
+   "fieldtype": "Password",
+   "fieldname": "door_access_token",
+   "description": "Shared secret the door reader sends with every request."
   }
  ],
  "grid_page_length": 50,
@@ -75,7 +82,7 @@
    "share": 1,
    "write": 1
   }
-  ],
+ ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",

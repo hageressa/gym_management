@@ -114,6 +114,34 @@ two real parallel requests against a running site.
   [the ERPNext source](https://github.com/frappe/erpnext) — the fields a Sales Invoice needs
   to submit, and what `Subscription` actually does on its schedule (R1).
 
+## Bonus: door-access integration
+
+The brief offers a `Webhook` **or** a REST integration for a door controller.
+Both halves are here, and the split between them is the point:
+
+- **Inbound is code.** `gym_management/door.py` exposes one guest endpoint the
+  reader calls. It decides nothing of its own — it asks
+  `get_membership_block_reason`, so the door and the front desk can never
+  disagree about the same member. That is the payoff from having put that rule
+  in one place earlier.
+- **Outbound is configuration.** Frappe's built-in `Webhook` DocType posts every
+  new `Gym Check In` to whatever system wants to hear about it. Writing a
+  publisher by hand would have been duplicating the framework.
+
+Guest access needed care, because the endpoint runs before any login:
+
+| Risk | What stops it |
+|---|---|
+| Token recovered by timing the replies | `hmac.compare_digest` |
+| Door left open while unconfigured | No token set raises, so it fails closed |
+| Brute force | `@rate_limit(limit=60, seconds=60)` |
+| Guest writing other records | `ignore_permissions` is used on that one insert and nowhere else; the Guest role holds no permission on any gym DocType |
+
+**Not done:** the token is one shared secret, so a stolen reader means rotating
+it on every door. A `Gym Door` record per reader, each with its own token and an
+`is_active` flag, would contain that — it is the first thing to add if this ran
+on more than one site.
+
 ## Deviations from the brief
 
 None in the field definitions: `Class Session` stores `session_date` / `start_time` /

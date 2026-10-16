@@ -18,23 +18,27 @@ def make_class(**values):
 
 
 class TestGymClassCapacity(unittest.TestCase):
-    @patch(f"{MODULE}.frappe.db.get_value", return_value=8)
-    def test_rejects_a_default_capacity_above_the_room(self, get_value):
+    """The document is built first and the lookup is mocked only around the
+    call under test: building a document loads its meta through the same
+    ``frappe.db.get_value``, so mocking earlier would break the constructor."""
+
+    def test_rejects_a_default_capacity_above_the_room(self):
         gym_class = make_class(default_capacity=10)
 
-        with self.assertRaises(Exception):
+        with patch(f"{MODULE}.frappe.db.get_value", return_value=8):
+            with self.assertRaises(Exception):
+                gym_class.validate_capacity_fits_room()
+
+    def test_allows_a_default_capacity_the_room_can_hold(self):
+        gym_class = make_class(default_capacity=10)
+
+        with patch(f"{MODULE}.frappe.db.get_value", return_value=20):
             gym_class.validate_capacity_fits_room()
 
-    @patch(f"{MODULE}.frappe.db.get_value", return_value=20)
-    def test_allows_a_default_capacity_the_room_can_hold(self, get_value):
-        gym_class = make_class(default_capacity=10)
-
-        gym_class.validate_capacity_fits_room()
-
-    @patch(f"{MODULE}.frappe.db.get_value")
-    def test_skips_the_check_when_no_room_is_set(self, get_value):
+    def test_skips_the_check_when_no_room_is_set(self):
         gym_class = make_class(default_room=None)
 
-        gym_class.validate_capacity_fits_room()
+        with patch(f"{MODULE}.frappe.db.get_value") as get_value:
+            gym_class.validate_capacity_fits_room()
 
         get_value.assert_not_called()

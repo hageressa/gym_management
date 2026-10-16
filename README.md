@@ -103,6 +103,34 @@ In `gym_management/api.py`:
 | `get_check_in_status(member)` | Whether the member may enter today, and why not |
 | `check_in_member(member, method)` | Records the check-in |
 
+## Door access (bonus)
+
+A card reader at the entrance is not a Frappe user, so it authenticates with a
+shared token rather than a login.
+
+1. Put a secret in **Gym Settings → Door Access Token**.
+2. Point the reader at the endpoint:
+
+```bash
+curl -X POST http://gym.localhost:8000/api/method/gym_management.door.door_access \
+  -H "Content-Type: application/json" \
+  -d '{"member": "MEM-0003", "token": "<your token>"}'
+```
+
+It answers `{"open": true, "check_in": "CHECKIN-0007", ...}` or
+`{"open": false, "reason": "membership is frozen today", ...}` — the same
+decision the front desk gets, because both ask `get_membership_block_reason`.
+A successful call records a `Gym Check In` with `method = "Card"`.
+
+The endpoint is guest-accessible, so it is guarded: the token is compared with
+`hmac.compare_digest`, an unset token fails closed, rejected attempts are
+logged, and the method is rate limited to 60 calls a minute.
+
+**Telling another system about an entry** needs no code. Create a stock Frappe
+**Webhook** with DocType `Gym Check In`, event `after_insert`, your controller's
+URL, and the fields you want in the body (`member`, `membership`,
+`check_in_time`, `method`).
+
 ## Tests
 
 ```bash
