@@ -7,7 +7,7 @@ def get_data():
         "fieldname": "member",
         "transactions": [
             {"label": _("Membership"), "items": ["Gym Membership", "Gym Check In"]},
-            {"label": _("Classes"), "items": ["Class Booking"]},
+            {"label": _("Classes"), "items": ["Class Booking", "Personal Training Session"]},
             {"label": _("Progress"), "items": ["Workout Plan", "Body Measurement"]},
         ],
     }

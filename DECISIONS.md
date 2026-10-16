@@ -173,3 +173,21 @@ A `Gym Member` is named `MEM-####` rather than by a hash, and the member link fi
 - **Empty optional measurements are 0, not refused.** Frappe stores an empty
   Float as 0, so only negative values are rejected; weight is the one required
   measurement and must be above zero.
+
+### Bonus: personal training
+
+- **Availability is its own DocType, not a table on Gym Trainer.** A trainer's
+  windows change on their own schedule, and keeping them separate means
+  editing availability never rewrites the trainer record, which links to an
+  Employee.
+- **Weekly windows, not dated slots.** A gym trainer's hours repeat by
+  weekday. Leave and one-off changes would be the next step; they are not in
+  scope.
+- **A booking reuses the existing rules instead of copying them.** Membership
+  validity comes from `get_valid_membership`; the time arithmetic uses
+  `combine_date_time` and `format_time`; the overlap query has the same shape
+  as Class Session's.
+- **The trainer's group classes count as conflicts.** A trainer teaching a
+  class cannot also be booked one to one.
+- **Only Scheduled sessions are checked.** Marking a session Completed or
+  Cancelled must save even if the membership has since expired.

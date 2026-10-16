@@ -205,3 +205,23 @@ under **Progress** in the member form's connections.
 
 Trainers and the front desk can create and edit both; the Gym Manager has full
 access.
+
+## Bonus: personal training (1:1)
+
+- **Trainer Availability** (`AVAIL-####`): a weekly window per trainer, for
+  example Monday 09:00 to 12:00. Windows for the same trainer and day cannot
+  overlap.
+- **Personal Training Session** (`PT-####`): one member, one trainer, a date,
+  a start time and a duration. The end time is computed. A Scheduled session
+  is refused unless:
+  - the member has a membership valid on that date (the same
+    `get_valid_membership` rule used by class bookings and check-ins);
+  - the trainer is active, and the whole session fits inside one of the
+    trainer's windows for that weekday;
+  - the trainer has no other personal session and no group Class Session at
+    that time, and the member has no other personal session then.
+
+Completing or cancelling a session skips those checks, so a session can always
+be closed. Sessions appear on the member form under **Classes** and on the
+trainer form under **Clients**; the trainer form also lists availability and
+class sessions under **Schedule**.
