@@ -188,3 +188,20 @@ Design decisions and the research answers are in [DECISIONS.md](DECISIONS.md).
 ## Licence
 
 MIT
+
+## Bonus: workout plans and body measurements
+
+Two DocTypes track a member's progress. Both link to `Gym Member` and appear
+under **Progress** in the member form's connections.
+
+- **Workout Plan** (`WP-####`): title, member, trainer, start/end date, status
+  (Active, Completed, Cancelled), goal, and an **Exercises** table with day,
+  exercise, sets, reps and weight. Validation: the end date cannot fall before
+  the start date, and sets, reps and weight cannot be negative.
+- **Body Measurement** (`MEAS-####`): one row per member per visit with weight,
+  height, body fat and chest/waist/hips. BMI is computed on save as
+  weight (kg) / height (m)²; it stays empty without a height. A future date, a
+  zero weight, a negative measurement or body fat above 100% is refused.
+
+Trainers and the front desk can create and edit both; the Gym Manager has full
+access.

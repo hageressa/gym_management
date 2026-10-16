@@ -158,3 +158,18 @@ None in the field definitions: `Class Session` stores `session_date` / `start_ti
 
 A `Gym Member` is named `MEM-####` rather than by a hash, and the member link field searches
 `member_name`, `phone` and `email`, so the front desk can find somebody by what they know.
+
+### Bonus: workout plans and body measurements
+
+- **A measurement is its own document, not a child table on Gym Member.** Each
+  visit is dated and has its own author (`measured_by`), the list view filters
+  and sorts it by member and date, and adding a reading never rewrites the
+  member record.
+- **Exercises are a child table on Workout Plan.** An exercise only means
+  something inside its plan, so it has no list of its own.
+- **BMI is computed, not typed.** It follows from weight and height, so it is
+  read-only and recalculated on every save, the same reasoning as Class
+  Session `end_time`.
+- **Empty optional measurements are 0, not refused.** Frappe stores an empty
+  Float as 0, so only negative values are rejected; weight is the one required
+  measurement and must be above zero.

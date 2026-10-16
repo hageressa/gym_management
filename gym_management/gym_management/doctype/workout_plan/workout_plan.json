@@ -1,0 +1,126 @@
+{
+  "doctype": "DocType",
+  "name": "Workout Plan",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "field_order": [
+    "plan_title",
+    "member",
+    "member_name",
+    "trainer",
+    "start_date",
+    "end_date",
+    "status",
+    "goal",
+    "exercises"
+  ],
+  "fields": [
+    {
+      "fieldname": "plan_title",
+      "fieldtype": "Data",
+      "label": "Plan Title",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "member",
+      "fieldtype": "Link",
+      "label": "Member",
+      "options": "Gym Member",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "member_name",
+      "fieldtype": "Data",
+      "label": "Member Name",
+      "fetch_from": "member.member_name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "trainer",
+      "fieldtype": "Link",
+      "label": "Trainer",
+      "options": "Gym Trainer",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "start_date",
+      "fieldtype": "Date",
+      "label": "Start Date",
+      "reqd": 1,
+      "default": "Today"
+    },
+    {
+      "fieldname": "end_date",
+      "fieldtype": "Date",
+      "label": "End Date"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Active\nCompleted\nCancelled",
+      "default": "Active",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "goal",
+      "fieldtype": "Small Text",
+      "label": "Goal"
+    },
+    {
+      "fieldname": "exercises",
+      "fieldtype": "Table",
+      "label": "Exercises",
+      "options": "Workout Plan Exercise"
+    }
+  ],
+  "autoname": "format:WP-{####}",
+  "title_field": "plan_title",
+  "show_title_field_in_link": 1,
+  "search_fields": "member_name",
+  "sort_field": "start_date",
+  "sort_order": "DESC",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "print": 1
+    },
+    {
+      "role": "Trainer",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "print": 1
+    }
+  ]
+}

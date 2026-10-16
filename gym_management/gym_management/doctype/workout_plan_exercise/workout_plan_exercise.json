@@ -1,0 +1,57 @@
+{
+  "doctype": "DocType",
+  "name": "Workout Plan Exercise",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "field_order": [
+    "day",
+    "exercise",
+    "sets",
+    "reps",
+    "weight_kg",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "day",
+      "fieldtype": "Select",
+      "label": "Day",
+      "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "exercise",
+      "fieldtype": "Data",
+      "label": "Exercise",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "sets",
+      "fieldtype": "Int",
+      "label": "Sets",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reps",
+      "fieldtype": "Int",
+      "label": "Reps",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "weight_kg",
+      "fieldtype": "Float",
+      "label": "Weight (kg)",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "istable": 1,
+  "permissions": []
+}

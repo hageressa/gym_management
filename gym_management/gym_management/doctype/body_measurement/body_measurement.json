@@ -1,0 +1,142 @@
+{
+  "doctype": "DocType",
+  "name": "Body Measurement",
+  "module": "Gym Management",
+  "custom": 0,
+  "engine": "InnoDB",
+  "field_order": [
+    "member",
+    "member_name",
+    "measurement_date",
+    "measured_by",
+    "weight_kg",
+    "height_cm",
+    "bmi",
+    "body_fat_percent",
+    "chest_cm",
+    "waist_cm",
+    "hips_cm",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "member",
+      "fieldtype": "Link",
+      "label": "Member",
+      "options": "Gym Member",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "member_name",
+      "fieldtype": "Data",
+      "label": "Member Name",
+      "fetch_from": "member.member_name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "measurement_date",
+      "fieldtype": "Date",
+      "label": "Measurement Date",
+      "reqd": 1,
+      "default": "Today",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "measured_by",
+      "fieldtype": "Link",
+      "label": "Measured By",
+      "options": "Gym Trainer"
+    },
+    {
+      "fieldname": "weight_kg",
+      "fieldtype": "Float",
+      "label": "Weight (kg)",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "height_cm",
+      "fieldtype": "Float",
+      "label": "Height (cm)"
+    },
+    {
+      "fieldname": "bmi",
+      "fieldtype": "Float",
+      "label": "BMI",
+      "read_only": 1,
+      "in_list_view": 1,
+      "precision": "1",
+      "description": "Computed from weight and height."
+    },
+    {
+      "fieldname": "body_fat_percent",
+      "fieldtype": "Percent",
+      "label": "Body Fat %"
+    },
+    {
+      "fieldname": "chest_cm",
+      "fieldtype": "Float",
+      "label": "Chest (cm)"
+    },
+    {
+      "fieldname": "waist_cm",
+      "fieldtype": "Float",
+      "label": "Waist (cm)"
+    },
+    {
+      "fieldname": "hips_cm",
+      "fieldtype": "Float",
+      "label": "Hips (cm)"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "autoname": "format:MEAS-{####}",
+  "title_field": "member_name",
+  "search_fields": "member_name",
+  "sort_field": "measurement_date",
+  "sort_order": "DESC",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Gym Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Front Desk",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "print": 1
+    },
+    {
+      "role": "Trainer",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "print": 1
+    }
+  ]
+}
