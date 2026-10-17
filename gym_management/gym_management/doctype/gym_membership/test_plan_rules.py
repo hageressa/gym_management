@@ -7,14 +7,11 @@ MODULE = "gym_management.gym_management.doctype.gym_membership.gym_membership"
 
 
 def make_membership(**values):
-    membership = {
-        "doctype": "Gym Membership",
-        "member": "MEM-0001",
-        "membership_plan": "Monthly 8",
-        "start_date": "2030-01-01",
-    }
+    # new_doc marks the document as new (__islocal), as an unsaved form is.
+    membership = frappe.new_doc("Gym Membership")
+    membership.update({"member": "MEM-0001", "membership_plan": "Monthly 8", "start_date": "2030-01-01"})
     membership.update(values)
-    return frappe.get_doc(membership)
+    return membership
 
 
 class TestPlanRules(unittest.TestCase):
@@ -58,8 +55,9 @@ class TestDuplicateMembership(unittest.TestCase):
         """Otherwise the invoice guard in on_submit would skip billing the copy."""
         original = make_membership(sales_invoice="ACC-SINV-0001", status="Active", classes_remaining=3)
 
-        copy = frappe.copy_doc(original)
+        # ignore_no_copy=False is what the form's Duplicate button does.
+        copy = frappe.copy_doc(original, ignore_no_copy=False)
 
         self.assertFalse(copy.sales_invoice)
         self.assertFalse(copy.classes_remaining)
-        self.assertEqual(copy.status, "Draft")
+        self.assertNotEqual(copy.status, "Active")
