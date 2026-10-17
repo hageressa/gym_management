@@ -45,6 +45,10 @@ frappe.ui.form.on("Gym Membership", {
 			return;
 		}
 
+		if (frm.doc.sales_invoice && frm.doc.status !== "Cancelled") {
+			frm.add_custom_button(__("Record Payment"), () => record_payment(frm), __("Actions"));
+		}
+
 		if (["Active", "Frozen"].includes(frm.doc.status)) {
 			frm.add_custom_button(__("Freeze"), () => freeze_membership(frm), __("Actions"));
 		}
@@ -123,5 +127,17 @@ function renew_membership(frm) {
 				}
 			},
 		});
+	});
+}
+
+function record_payment(frm) {
+	// ERPNext builds the Payment Entry from the invoice, with the outstanding amount filled in.
+	frappe.call({
+		method: "erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry",
+		args: { dt: "Sales Invoice", dn: frm.doc.sales_invoice },
+		callback: (r) => {
+			const doc = frappe.model.sync(r.message)[0];
+			frappe.set_route("Form", doc.doctype, doc.name);
+		},
 	});
 }

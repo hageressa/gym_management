@@ -73,6 +73,15 @@ Shipped as fixtures, so they exist after install:
   them. A trainer user is matched through `Employee.user_id` on the Employee their Gym
   Trainer links to; `gym_management/permissions.py` adds the row-level rule.
 
+## Contacts and payments
+
+- Saving a **Gym Member** keeps one standard `Contact` in step with its email and phone,
+  linked by Dynamic Link to both the member and its `Customer`. The member form shows the
+  standard *Address and Contact* block, so addresses are added the same way as on a Customer.
+- A submitted **Gym Membership** has **Actions → Record Payment**, which opens ERPNext's own
+  `Payment Entry` for the membership's Sales Invoice with the outstanding amount filled in
+  (the user needs ERPNext's usual permission to create Payment Entries, e.g. Accounts User).
+
 ## Scheduled jobs
 
 Registered as daily tasks in `hooks.py`:

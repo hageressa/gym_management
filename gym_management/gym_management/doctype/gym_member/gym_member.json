@@ -17,7 +17,11 @@
   "status",
   "emergency_contact_name",
   "emergency_contact_phone",
-  "active_membership"
+  "active_membership",
+  "address_contact_section",
+  "address_html",
+  "address_contact_column",
+  "contact_html"
  ],
  "fields": [
   {
@@ -91,6 +95,27 @@
    "fieldtype": "Link",
    "label": "Active Membership",
    "options": "Gym Membership",
+   "read_only": 1
+  },
+  {
+   "fieldname": "address_contact_section",
+   "fieldtype": "Section Break",
+   "label": "Address and Contact"
+  },
+  {
+   "fieldname": "address_html",
+   "fieldtype": "HTML",
+   "label": "Address HTML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "address_contact_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contact HTML",
    "read_only": 1
   }
  ],

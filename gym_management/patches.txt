@@ -7,3 +7,4 @@ gym_management.patches.v1_0.clear_duplicate_trainer_employees
 # Patches added in this section will be executed after doctypes are migrated
 gym_management.patches.v1_0.align_fields_with_task_spec
 gym_management.patches.v1_0.match_task_spec_fields
+gym_management.patches.v1_0.create_member_contacts
