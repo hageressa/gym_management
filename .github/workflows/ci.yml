@@ -106,6 +106,6 @@ jobs:
           # then the seed adds the gym's settings and sample records.
           bench --site test_site execute erpnext.setup.utils.before_tests
           bench --site test_site execute gym_management.seed.run
-          bench --site test_site run-tests --app gym_management
+          bench --site test_site run-tests --app gym_management --skip-test-records
         env:
           TYPE: server
