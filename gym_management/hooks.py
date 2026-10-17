@@ -293,3 +293,5 @@ has_permission = {
     "Class Session": "gym_management.permissions.class_session_has_permission",
     "Class Booking": "gym_management.permissions.class_booking_has_permission",
 }
+
+before_tests = "gym_management.testing.before_tests"
