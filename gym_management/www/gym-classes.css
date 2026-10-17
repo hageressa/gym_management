@@ -1,0 +1,10 @@
+.gym-card {
+	padding: 1.25rem 1.5rem;
+	border: 1px solid var(--border-color, #e2e6e9);
+	border-radius: 0.75rem;
+}
+
+.gym-table td,
+.gym-table th {
+	vertical-align: middle;
+}

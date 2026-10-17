@@ -191,3 +191,21 @@ A `Gym Member` is named `MEM-####` rather than by a hash, and the member link fi
   class cannot also be booked one to one.
 - **Only Scheduled sessions are checked.** Marking a session Completed or
   Cancelled must save even if the membership has since expired.
+
+### Bonus: member portal
+
+- **The member is found by email, not by a new link field.** Gym Member
+  already stores the email, so the login maps to the member without a schema
+  change. If two members share an email the portal refuses rather than
+  guessing whose bookings to show.
+- **The member always comes from the session, never from the request.**
+  `book_session(session)` takes no member argument, and `cancel_booking`
+  checks that the booking belongs to the signed-in member. This is what makes
+  `ignore_permissions` safe: Website Users hold no permission on Class Booking,
+  and are not given any.
+- **One booking path.** `book_class` was split so its body became
+  `create_booking`; the Desk endpoint and the portal call the same function and
+  differ only in who has been authorised. No booking rule lives in the portal.
+- **A Frappe `www` page, not a Web Form.** A Web Form edits one document; this
+  page lists sessions and acts on bookings, so a template with a small script
+  calling whitelisted methods fits better.

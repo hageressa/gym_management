@@ -225,3 +225,24 @@ Completing or cancelling a session skips those checks, so a session can always
 be closed. Sessions appear on the member form under **Classes** and on the
 trainer form under **Clients**; the trainer form also lists availability and
 class sessions under **Schedule**.
+
+## Bonus: member portal
+
+`/gym-classes` is a website page (not the Desk) where a member browses the
+classes of the next 7 days and books or cancels their own spot.
+
+- **Sign-in:** the member logs in with a Website User whose email is the email
+  on their Gym Member record. Guests are sent to the login page; an account
+  with no matching member sees a notice instead of data.
+- **What the page shows:** the member's membership and whether it can be used
+  today, their upcoming bookings (Booked or Waitlisted #n) with a Cancel
+  button, and each upcoming session with its trainer, time and spots left. A
+  full session offers "Join waitlist" when the waitlist is enabled.
+- **Rules:** booking goes through `create_booking`, the same path as the
+  front-desk `book_class`, so the Class Booking controller applies the
+  membership, capacity, duplicate and waitlist rules. Cancelling saves the
+  booking as Cancelled, which runs the usual hooks: the spot count, the
+  class-pack credit and waitlist promotion.
+
+To try it: create a User with the member's email, set **User Type** to
+*Website User*, give it a password, and open `/gym-classes` in a private window.

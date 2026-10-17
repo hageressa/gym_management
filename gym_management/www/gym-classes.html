@@ -1,0 +1,97 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ _("Gym Classes") }}{% endblock %}
+
+{% block header %}<h1>{{ _("Gym Classes") }}</h1>{% endblock %}
+
+{% block page_content %}
+{% macro booking_label(booking) -%}
+	{%- if booking.status == "Waitlisted" -%}
+		{{ _("Waitlisted #{0}").format(booking.waitlist_position) }}
+	{%- else -%}
+		{{ _("Booked") }}
+	{%- endif -%}
+{%- endmacro %}
+
+{% if not member %}
+	<div class="alert alert-warning">
+		{{ _("Your account is not linked to a gym member. Please ask the front desk to use the same email on your member record.") }}
+	</div>
+{% else %}
+	<section class="gym-card">
+		<h4>{{ _("Hello, {0}").format(member_name) | e }}</h4>
+		{% if membership %}
+			<p class="mb-1">
+				{{ membership.membership_plan | e }} &middot; {{ _("ends") }} {{ membership_end }}
+			</p>
+		{% endif %}
+		{% if block_reason %}
+			<p class="text-danger mb-0">{{ _("You cannot train today: {0}.").format(block_reason) | e }}</p>
+		{% else %}
+			<p class="text-success mb-0">{{ _("Your membership is active.") }}</p>
+		{% endif %}
+	</section>
+
+	<h3 class="mt-5">{{ _("My bookings") }}</h3>
+	{% if my_bookings %}
+		<table class="table gym-table">
+			<thead><tr>
+				<th>{{ _("Class") }}</th><th>{{ _("Date") }}</th><th>{{ _("Time") }}</th>
+				<th>{{ _("Status") }}</th><th></th>
+			</tr></thead>
+			<tbody>
+			{% for row in my_bookings %}
+				<tr>
+					<td>{{ row.class_name | e }}</td>
+					<td>{{ row.date_label }}</td>
+					<td>{{ row.time_label }}</td>
+					<td>{{ booking_label(row.my_booking) }}</td>
+					<td class="text-right">
+						<button class="btn btn-sm btn-default" data-gym-action="cancel"
+							data-booking="{{ row.my_booking.name }}">{{ _("Cancel") }}</button>
+					</td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+	{% else %}
+		<p class="text-muted">{{ _("You have no upcoming bookings.") }}</p>
+	{% endif %}
+
+	<h3 class="mt-5">{{ _("Classes in the next 7 days") }}</h3>
+	{% if sessions %}
+		<table class="table gym-table">
+			<thead><tr>
+				<th>{{ _("Class") }}</th><th>{{ _("Trainer") }}</th><th>{{ _("Date") }}</th>
+				<th>{{ _("Time") }}</th><th>{{ _("Spots left") }}</th><th></th>
+			</tr></thead>
+			<tbody>
+			{% for row in sessions %}
+				<tr>
+					<td>{{ row.class_name | e }}</td>
+					<td>{{ row.trainer_name | e }}</td>
+					<td>{{ row.date_label }}</td>
+					<td>{{ row.time_label }}</td>
+					<td>{{ row.spots_left }} / {{ row.capacity }}</td>
+					<td class="text-right">
+						{% if row.my_booking %}
+							<span class="text-muted">{{ booking_label(row.my_booking) }}</span>
+						{% elif row.spots_left %}
+							<button class="btn btn-sm btn-primary" data-gym-action="book"
+								data-session="{{ row.name }}">{{ _("Book") }}</button>
+						{% elif enable_waitlist %}
+							<button class="btn btn-sm btn-default" data-gym-action="book"
+								data-session="{{ row.name }}">{{ _("Join waitlist") }}</button>
+						{% else %}
+							<span class="text-muted">{{ _("Full") }}</span>
+						{% endif %}
+					</td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+	{% else %}
+		<p class="text-muted">{{ _("No classes are scheduled in the next 7 days.") }}</p>
+	{% endif %}
+{% endif %}
+{% endblock %}

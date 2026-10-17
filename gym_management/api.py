@@ -27,6 +27,15 @@ SESSION_FIELDS = [
 @frappe.whitelist()
 def book_class(session, member):
     """Book a member onto a session. The controller decides Booked vs Waitlisted."""
+    return create_booking(session, member)
+
+
+def create_booking(session, member, ignore_permissions=False):
+    """Insert the booking; the Class Booking controller applies every rule.
+
+    ``ignore_permissions`` is for the member portal only, which has already
+    confirmed that ``member`` is the signed-in user.
+    """
     if not session or not member:
         frappe.throw(_("Session and member are required."))
 
@@ -38,7 +47,7 @@ def book_class(session, member):
         "status": "Booked",
     })
 
-    booking.insert()
+    booking.insert(ignore_permissions=ignore_permissions)
 
     return {
         "booking": booking.name,
