@@ -51,26 +51,30 @@
    "fieldtype": "Int",
    "fieldname": "waitlist_position",
    "read_only": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "membership",
    "fieldtype": "Link",
    "label": "Membership",
    "options": "Gym Membership",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "booked_on",
    "fieldtype": "Datetime",
    "label": "Booked On",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "cancelled_on",
    "fieldtype": "Datetime",
    "label": "Cancelled On",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "permissions": [

@@ -5,6 +5,7 @@ frappe.ui.form.on("Gym Membership", {
 		frm.set_query("member", () => ({
 			filters: { status: ["!=", "Blacklisted"] },
 		}));
+		frm.set_query("membership_plan", () => ({ filters: { is_active: 1 } }));
 	},
 
 	refresh(frm) {

@@ -263,6 +263,7 @@ scheduler_events = {
     "daily": [
         "gym_management.tasks.sync_freeze_statuses",
         "gym_management.tasks.update_expired_memberships",
+        "gym_management.tasks.renew_auto_renew_memberships",
         "gym_management.tasks.send_membership_expiry_reminders",
     ]
 }

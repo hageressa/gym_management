@@ -61,11 +61,14 @@ def apply_booking_status_effects(doc, method=None):
         _warn_no_show_limit(doc)
 
 
-def _is_class_pack(membership_name):
+def _tracks_classes(membership_name):
+    """A class pack, or a plan with a class allowance (classes_included 0 = unlimited)."""
     plan = frappe.db.get_value("Gym Membership", membership_name, "membership_plan")
-    return bool(plan) and (
-        frappe.db.get_value("Membership Plan", plan, "duration_type") == "Class Pack"
-    )
+    if not plan:
+        return False
+    if frappe.db.get_value("Membership Plan", plan, "duration_type") == "Class Pack":
+        return True
+    return bool(frappe.db.get_value("Membership Plan", plan, "classes_included"))
 
 
 def _adjust_class_credit(doc, change):
@@ -74,14 +77,14 @@ def _adjust_class_credit(doc, change):
     Raises when a booking would take a class from an empty pack. Raising inside
     the save rolls back the booking too, so the member is never charged twice.
     """
-    if not doc.membership or not _is_class_pack(doc.membership):
+    if not doc.membership or not _tracks_classes(doc.membership):
         return
 
     remaining = frappe.db.get_value("Gym Membership", doc.membership, "classes_remaining") or 0
     new_remaining = remaining + change
 
     if new_remaining < 0:
-        frappe.throw(_("This class pack has no classes remaining."))
+        frappe.throw(_("This membership has no classes remaining."))
 
     frappe.db.set_value(
         "Gym Membership",

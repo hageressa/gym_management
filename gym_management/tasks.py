@@ -3,7 +3,7 @@ from html import escape
 import frappe
 from frappe.utils import add_days, getdate, today
 
-from gym_management.utils import sync_member_active_membership
+from gym_management.utils import get_latest_membership, sync_member_active_membership
 
 
 def update_expired_memberships():
@@ -24,6 +24,32 @@ def update_expired_memberships():
             sync_member_active_membership(membership.member)
 
     frappe.db.commit()
+
+
+def renew_auto_renew_memberships():
+    """Daily: renew expired memberships marked auto_renew.
+
+    Only the member's latest membership is renewed, so a term that was already
+    renewed is never renewed again. Each renewal commits on its own; one that
+    fails (an inactive plan, say) is logged and does not stop the rest.
+    """
+    from gym_management.api import renew_membership
+
+    names = frappe.get_all(
+        "Gym Membership",
+        filters={"docstatus": 1, "status": "Expired", "auto_renew": 1},
+        fields=["name", "member"],
+    )
+
+    for row in names:
+        if get_latest_membership(row.member) != row.name:
+            continue
+        try:
+            renew_membership(row.name)
+            frappe.db.commit()
+        except Exception:
+            frappe.db.rollback()
+            frappe.log_error(title="Gym membership auto-renew failed", message=frappe.get_traceback())
 
 
 def send_membership_expiry_reminders():

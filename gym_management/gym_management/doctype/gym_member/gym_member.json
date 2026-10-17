@@ -36,7 +36,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Customer",
-   "options": "Customer"
+   "options": "Customer",
+   "no_copy": 1
   },
   {
    "fieldname": "email",
@@ -95,7 +96,8 @@
    "fieldtype": "Link",
    "label": "Active Membership",
    "options": "Gym Membership",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "address_contact_section",

@@ -89,6 +89,8 @@ Registered as daily tasks in `hooks.py`:
 - `tasks.sync_freeze_statuses` — moves memberships between Active and Frozen as freeze
   periods start and end.
 - `tasks.update_expired_memberships` — marks memberships Expired past their end date.
+- `tasks.renew_auto_renew_memberships` — renews expired memberships marked **Auto Renew**
+  (a new submitted membership on the same plan, with its own Sales Invoice).
 - `tasks.send_membership_expiry_reminders` — emails members whose membership expires within
   `Gym Settings.expiry_reminder_days`, once each.
 

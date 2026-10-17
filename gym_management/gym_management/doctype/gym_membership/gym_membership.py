@@ -15,9 +15,17 @@ from gym_management.utils import (
 
 class GymMembership(Document):
     def validate(self):
+        self.validate_plan_is_active()
         self.validate_freeze_history()
         self.calculate_end_date()
         self.set_class_pack_balance()
+
+    def validate_plan_is_active(self):
+        """A plan switched off may not be sold; memberships already submitted keep it."""
+        if self.docstatus != 0 or not self.membership_plan:
+            return
+        if not frappe.db.get_value("Membership Plan", self.membership_plan, "is_active"):
+            frappe.throw(_("Membership Plan {0} is not active.").format(self.membership_plan))
 
     def validate_freeze_history(self):
         if not self.membership_plan:
@@ -79,13 +87,16 @@ class GymMembership(Document):
         self.end_date = add_days(base_end_date, total_freeze_days)
 
     def set_class_pack_balance(self):
-        """Give a new class-pack membership its starting number of classes."""
+        """Give a new membership its class allowance: a class pack, or any plan
+        whose classes_included is set (0 means unlimited)."""
         if not self.is_new() or self.classes_remaining or not self.membership_plan:
             return
 
         plan = frappe.get_doc("Membership Plan", self.membership_plan)
         if plan.duration_type == "Class Pack":
             self.classes_remaining = plan.classes_included or plan.duration_value
+        elif plan.classes_included:
+            self.classes_remaining = plan.classes_included
 
     def before_submit(self):
         self.validate_single_active_membership()

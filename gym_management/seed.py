@@ -45,6 +45,15 @@ PLANS = [
         "is_active": 1,
     },
     {
+        "plan_name": "Annual Unlimited",
+        "duration_type": "Months",
+        "duration_value": 12,
+        "price": 7200,
+        "classes_included": 0,
+        "max_freeze_days": 30,
+        "is_active": 1,
+    },
+    {
         "plan_name": "10 Class Pack",
         "duration_type": "Class Pack",
         "duration_value": 10,

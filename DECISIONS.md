@@ -21,10 +21,11 @@ So the membership lifecycle is ours, and the money is ERPNext's:
 | The charge | A `Sales Invoice` created in `Gym Membership.on_submit` |
 | Membership state, freezes, class balance | `Gym Membership` |
 
-**Trade-off:** no automatic recurring billing. Renewal is explicit, through
-`api.renew_membership`, which starts the new term the day after the old one ends. The
-`subscription` link and `auto_renew` fields are on the DocType so a `Subscription` can be
-attached later for members who want card-on-file billing, without reshaping the data model.
+**Trade-off:** no card-on-file recurring billing. Renewal goes through
+`api.renew_membership`, which starts the new term the day after the old one ends and raises
+its own invoice; the front desk calls it from the Renew button, and a daily job calls it for
+memberships marked `auto_renew`. The `subscription` link stays on the DocType so a
+`Subscription` can be attached later without reshaping the data model.
 
 ## R2. How trainers are modelled
 

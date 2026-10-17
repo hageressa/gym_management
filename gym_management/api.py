@@ -182,6 +182,7 @@ def renew_membership(membership_name):
         "member": old.member,
         "membership_plan": old.membership_plan,
         "start_date": start_date,
+        "auto_renew": old.auto_renew,
         "status": "Draft",
     })
 

@@ -62,7 +62,8 @@
    "fieldname": "is_active",
    "fieldtype": "Check",
    "label": "Is Active",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "default": "1"
   }
  ],
  "grid_page_length": 50,

@@ -139,13 +139,26 @@ class TestClassPackCredits(FrappeTestCase):
 
     @patch("gym_management.events.frappe.db.set_value")
     @patch("gym_management.events.frappe.db.get_value")
-    def test_time_based_membership_is_not_charged(self, get_value, set_value):
-        get_value.side_effect = ["PLAN-MONTH", "Months"]
+    def test_unlimited_time_based_membership_is_not_charged(self, get_value, set_value):
+        # classes_included 0 means unlimited.
+        get_value.side_effect = ["PLAN-MONTH", "Months", 0]
         booking = with_previous_status(make_booking(membership="MEM-1"), None)
 
         events.apply_booking_status_effects(booking)
 
         set_value.assert_not_called()
+
+    @patch("gym_management.events.frappe.db.set_value")
+    @patch("gym_management.events.frappe.db.get_value")
+    def test_monthly_plan_with_an_allowance_is_charged(self, get_value, set_value):
+        get_value.side_effect = ["PLAN-8", "Months", 8, 5]
+        booking = with_previous_status(make_booking(membership="MEM-1"), None)
+
+        events.apply_booking_status_effects(booking)
+
+        set_value.assert_called_once_with(
+            "Gym Membership", "MEM-1", "classes_remaining", 4, update_modified=False
+        )
 
     @patch("gym_management.events.frappe.db.get_value")
     def test_unchanged_status_has_no_effect(self, get_value):
