@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import date_diff, getdate
 
@@ -12,6 +13,6 @@ class MembershipFreeze(Document):
         freeze_to = getdate(self.freeze_to)
 
         if freeze_to <= freeze_from:
-            frappe.throw('Freeze To must be after Freeze From.')
+            frappe.throw(_("Freeze To must be after Freeze From."))
 
         self.days = date_diff(freeze_to, freeze_from) + 1

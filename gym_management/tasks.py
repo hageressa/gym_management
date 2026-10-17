@@ -3,7 +3,7 @@ from html import escape
 import frappe
 from frappe.utils import add_days, getdate, today
 
-from gym_management.utils import get_latest_membership, sync_member_active_membership
+from gym_management.utils import get_latest_membership, is_frozen_on, sync_member_active_membership
 
 
 def update_expired_memberships():
@@ -98,8 +98,8 @@ def send_membership_expiry_reminders():
 
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(),
-                f"Membership expiry reminder failed: {membership_name}",
+                title=f"Membership expiry reminder failed: {membership_name}",
+                message=frappe.get_traceback(),
             )
 
 
@@ -118,12 +118,7 @@ def sync_freeze_statuses():
 
     for membership_name in membership_names:
         membership = frappe.get_doc("Gym Membership", membership_name)
-        is_frozen_today = any(
-            row.freeze_from
-            and row.freeze_to
-            and getdate(row.freeze_from) <= current_date <= getdate(row.freeze_to)
-            for row in membership.get("freeze_history") or []
-        )
+        is_frozen_today = is_frozen_on(membership, current_date)
         if membership.end_date and getdate(membership.end_date) < current_date:
             new_status = "Expired"
         else:

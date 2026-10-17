@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.model.document import Document
 from frappe.utils import getdate, today
@@ -22,7 +23,7 @@ class GymMember(Document):
 
     def validate_date_of_birth(self):
         if self.date_of_birth and getdate(self.date_of_birth) > getdate(today()):
-            frappe.throw("Date of Birth cannot be in the future.")
+            frappe.throw(_("Date of Birth cannot be in the future."))
 
     def create_customer(self):
         if self.customer or not self.member_name:

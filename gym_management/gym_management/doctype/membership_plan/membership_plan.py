@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 from gym_management.utils import get_selling_price_list
@@ -25,7 +26,7 @@ class MembershipPlan(Document):
         )
 
         if existing:
-            frappe.throw("Plan Name must be unique.")
+            frappe.throw(_("Plan Name must be unique."))
 
     def create_service_item_if_missing(self):
         if self.item or not self.plan_name:
@@ -35,9 +36,7 @@ class MembershipPlan(Document):
         item_group = settings.default_item_group
 
         if not item_group:
-            frappe.throw(
-                "Set Default Item Group in Gym Settings first."
-            )
+            frappe.throw(_("Set Default Item Group in Gym Settings first."))
 
         item = frappe.get_doc({
             "doctype": "Item",
@@ -75,7 +74,7 @@ class MembershipPlan(Document):
             or not price_list_data.selling
             or not price_list_data.enabled
         ):
-            frappe.throw("An enabled selling Price List is required.")
+            frappe.throw(_("An enabled selling Price List is required."))
 
         item_price_name = frappe.db.get_value(
             "Item Price",

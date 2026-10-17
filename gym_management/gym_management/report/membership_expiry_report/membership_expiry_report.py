@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.utils import add_days, getdate, today
 
 
@@ -64,7 +65,7 @@ def execute(filters=None):
 
     if filters.get("from_date") and filters.get("to_date"):
         if getdate(filters.from_date) > getdate(filters.to_date):
-            frappe.throw("Expiry From Date cannot be after Expiry To Date.")
+            frappe.throw(_("Expiry From Date cannot be after Expiry To Date."))
 
     if filters.get("from_date"):
         conditions.append("end_date >= %(from_date)s")

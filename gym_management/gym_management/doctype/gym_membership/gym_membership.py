@@ -38,13 +38,13 @@ class GymMembership(Document):
 
         for row in self.get("freeze_history") or []:
             if not row.freeze_from or not row.freeze_to:
-                frappe.throw("Freeze From and Freeze To are required.")
+                frappe.throw(_("Freeze From and Freeze To are required."))
 
             freeze_from = getdate(row.freeze_from)
             freeze_to = getdate(row.freeze_to)
 
             if freeze_to <= freeze_from:
-                frappe.throw("Freeze To must be after Freeze From.")
+                frappe.throw(_("Freeze To must be after Freeze From."))
 
             row.days = (freeze_to - freeze_from).days + 1
             total_freeze_days += row.days
@@ -53,12 +53,13 @@ class GymMembership(Document):
         periods.sort(key=lambda period: period[0])
         for previous, current in pairwise(periods):
             if current[0] <= previous[1]:
-                frappe.throw("Membership freeze periods cannot overlap.")
+                frappe.throw(_("Membership freeze periods cannot overlap."))
 
         if total_freeze_days > max_freeze_days:
             frappe.throw(
-                f"Total freeze days ({total_freeze_days}) exceed "
-                f"the plan limit ({max_freeze_days})."
+                _("Total freeze days ({0}) exceed the plan limit ({1}).").format(
+                    total_freeze_days, max_freeze_days
+                )
             )
 
     def calculate_end_date(self):
@@ -102,13 +103,16 @@ class GymMembership(Document):
         self.validate_single_active_membership()
 
     def validate_single_active_membership(self):
-        """A member may hold only one Active membership at a time."""
+        """A member may hold only one Active membership at a time.
+
+        A Frozen one counts too: it becomes Active again when the freeze ends.
+        """
         if frappe.db.exists(
             "Gym Membership",
             {
                 "member": self.member,
                 "docstatus": 1,
-                "status": "Active",
+                "status": ["in", ["Active", "Frozen"]],
                 "name": ["!=", self.name],
             },
         ):

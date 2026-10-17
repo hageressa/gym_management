@@ -84,8 +84,8 @@ class ClassBooking(Document):
             )
         except Exception:
             frappe.log_error(
-                frappe.get_traceback(),
-                "Gym waitlist promotion email failed",
+                title="Gym waitlist promotion email failed",
+                message=frappe.get_traceback(),
             )
 
     def validate(self):

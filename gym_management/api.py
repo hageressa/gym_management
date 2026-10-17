@@ -168,7 +168,7 @@ def renew_membership(membership_name):
 
     if frappe.db.exists(
         "Gym Membership",
-        {"member": old.member, "docstatus": 1, "status": "Active"},
+        {"member": old.member, "docstatus": 1, "status": ["in", ["Active", "Frozen"]]},
     ):
         frappe.throw(_("This member already has an active membership."))
 
@@ -198,7 +198,11 @@ def renew_membership(membership_name):
 
 @frappe.whitelist()
 def get_dashboard_data():
-    """Every figure the Gym Dashboard page shows, gathered in one call."""
+    """Every figure the Gym Dashboard page shows, gathered in one call.
+
+    Revenue is in here, so only the roles the page is given may call it.
+    """
+    frappe.only_for(("System Manager", "Gym Manager"))
     today_date = getdate(today())
     month_start = today_date.replace(day=1)
 
@@ -315,7 +319,8 @@ def find_members(search_text):
 
     pattern = f"%{search_text}%"
 
-    return frappe.get_all(
+    # get_list, not get_all: a portal member must not be able to search everyone.
+    return frappe.get_list(
         "Gym Member",
         or_filters={
             "name": ["like", pattern],
@@ -332,6 +337,7 @@ def find_members(search_text):
 @frappe.whitelist()
 def get_check_in_status(member):
     """Whether this member may enter today, and the reason when they may not."""
+    frappe.has_permission("Gym Check In", "create", throw=True)
     membership_name = get_latest_membership(member)
 
     if not membership_name:

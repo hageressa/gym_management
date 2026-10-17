@@ -131,7 +131,7 @@ curl -X POST http://gym.localhost:8000/api/method/gym_management.door.door_acces
 ```
 
 It answers `{"open": true, "check_in": "CHECKIN-0007", ...}` or
-`{"open": false, "reason": "membership is frozen today", ...}` — the same
+`{"open": false, "reason": "membership is frozen on that date", ...}` — the same
 decision the front desk gets, because both ask `get_membership_block_reason`.
 A successful call records a `Gym Check In` with `method = "Card"`.
 

@@ -4,7 +4,7 @@ from datetime import datetime
 
 import frappe
 from frappe import _
-from frappe.utils import get_time, getdate
+from frappe.utils import get_time, getdate, today
 
 
 def get_default_company():
@@ -81,21 +81,28 @@ def get_membership_block_reason(membership, on_date):
     if membership.start_date and getdate(membership.start_date) > on_date:
         return _("membership has not started yet")
 
-    # The stored status can lag behind the freeze dates, so check both.
-    if membership.status == "Frozen" or is_frozen_on(membership, on_date):
-        return _("membership is frozen today")
+    # The freeze dates decide for any date. The stored Frozen status describes
+    # today only, so it counts for today and not for a session after the freeze.
+    if is_frozen_on(membership, on_date) or (
+        membership.status == "Frozen" and on_date == getdate(today())
+    ):
+        return _("membership is frozen on that date")
 
-    if membership.status != "Active":
+    if membership.status not in ("Active", "Frozen"):
         return _("membership is not active")
 
     return None
 
 
 def get_valid_membership(member, on_date):
-    """Name of the member's first usable submitted membership on ``on_date``, or None."""
+    """Name of the member's first usable submitted membership on ``on_date``, or None.
+
+    Frozen memberships are included: one frozen today can still be used on a
+    date after the freeze ends.
+    """
     rows = frappe.get_all(
         "Gym Membership",
-        filters={"member": member, "docstatus": 1, "status": "Active"},
+        filters={"member": member, "docstatus": 1, "status": ["in", ["Active", "Frozen"]]},
         fields=["name"],
     )
     for row in rows:

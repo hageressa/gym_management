@@ -36,7 +36,7 @@ def execute():
         for name in names[1:]:
             frappe.db.set_value("Gym Trainer", name, "employee", None, update_modified=False)
             frappe.log_error(
-                f"Gym Trainer {name} shared Employee {employee}; the link was cleared "
+                title="Gym trainer employee de-duplication",
+                message=f"Gym Trainer {name} shared Employee {employee}; the link was cleared "
                 "so the employee field could be made unique.",
-                "Gym trainer employee de-duplication",
             )
