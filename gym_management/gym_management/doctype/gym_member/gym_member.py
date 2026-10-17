@@ -14,6 +14,7 @@ class GymMember(Document):
 
     def validate(self):
         self.validate_date_of_birth()
+        self.validate_unique_customer()
 
     def before_insert(self):
         self.create_customer()
@@ -24,6 +25,18 @@ class GymMember(Document):
     def validate_date_of_birth(self):
         if self.date_of_birth and getdate(self.date_of_birth) > getdate(today()):
             frappe.throw(_("Date of Birth cannot be in the future."))
+
+    def validate_unique_customer(self):
+        """One Gym Member per Customer, the brief's 1:1 rule."""
+        if not self.customer:
+            return
+        other = frappe.db.get_value(
+            "Gym Member", {"customer": self.customer, "name": ["!=", self.name]}, "name"
+        )
+        if other:
+            frappe.throw(
+                _("Customer {0} is already linked to Gym Member {1}.").format(self.customer, other)
+            )
 
     def create_customer(self):
         if self.customer or not self.member_name:

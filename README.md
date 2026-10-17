@@ -34,7 +34,10 @@ Then load the sample data:
 bench --site gym.localhost execute gym_management.seed.run
 ```
 
-That creates an item group, three plans, two trainers with specialties, two rooms, two
+Without the seed, set **Gym Settings → Default Item Group** before creating a Membership
+Plan, since each plan creates its service Item in that group.
+
+That creates an item group, four plans (monthly, quarterly, annual and a 10-class pack), two trainers with specialties, two rooms, two
 classes and three members, plus upcoming sessions. It is safe to run again — every record is
 looked up before it is created. One class ("HIIT Express") has a capacity of 2 so the
 waitlist is easy to demonstrate.
@@ -62,6 +65,8 @@ membership to pause it, then try the check-in again to see it refused.
 | Manager dashboard | `docs/screenshots/04-dashboard.png` |
 | Timetable as a calendar | `docs/screenshots/05-session-calendar.png` |
 | A freeze extending the end date | `docs/screenshots/06-membership-frozen.png` |
+| Welcome email for the member portal | `docs/screenshots/07-welcome-email.png` |
+| Member portal with a booking | `docs/screenshots/08-member-portal.png` |
 
 ## Roles
 
