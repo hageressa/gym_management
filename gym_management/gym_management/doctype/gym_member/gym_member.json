@@ -44,7 +44,8 @@
    "fieldname": "phone",
    "fieldtype": "Data",
    "label": "Phone",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "options": "Phone"
   },
   {
    "fieldname": "date_of_birth",

@@ -281,3 +281,14 @@ doc_events = {
         "on_trash": "gym_management.events.update_session_booked_count",
     }
 }
+
+# A trainer sees, and marks attendance for, their own sessions only.
+permission_query_conditions = {
+    "Class Session": "gym_management.permissions.class_session_query",
+    "Class Booking": "gym_management.permissions.class_booking_query",
+}
+
+has_permission = {
+    "Class Session": "gym_management.permissions.class_session_has_permission",
+    "Class Booking": "gym_management.permissions.class_booking_has_permission",
+}

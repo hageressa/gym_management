@@ -69,7 +69,9 @@ Shipped as fixtures, so they exist after install:
 
 - **Gym Manager** — everything, including submitting and cancelling memberships.
 - **Front Desk** — members, memberships, bookings and check-ins.
-- **Trainer** — reads the timetable and marks attendance on bookings.
+- **Trainer** — reads their own class sessions and marks attendance on the bookings for
+  them. A trainer user is matched through `Employee.user_id` on the Employee their Gym
+  Trainer links to; `gym_management/permissions.py` adds the row-level rule.
 
 ## Scheduled jobs
 

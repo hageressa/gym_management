@@ -378,8 +378,9 @@ def get_session_calendar_events(start, end, filters=None):
 
     The calendar wants one datetime for the start and one for the end, while
     the sessions store a date and two times, so they are combined here.
+    get_list, not get_all, so a trainer's calendar shows only their sessions.
     """
-    sessions = frappe.get_all(
+    sessions = frappe.get_list(
         "Class Session",
         filters={"session_date": ["between", [start, end]]},
         fields=["name", "gym_class", "session_date", "start_time", "end_time", "status"],

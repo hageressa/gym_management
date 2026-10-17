@@ -42,7 +42,7 @@
    "label": "Status",
    "fieldtype": "Select",
    "fieldname": "status",
-   "options": "Booked\nWaitlisted\nCancelled\nAttended\nNo Show",
+   "options": "Booked\nWaitlisted\nAttended\nNo Show\nCancelled",
    "default": "Booked",
    "in_list_view": 1
   },
